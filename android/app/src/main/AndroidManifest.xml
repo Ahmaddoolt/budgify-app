@@ -1,21 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.budgifydev.budgify"> <!-- !!! YOUR PACKAGE NAME HERE !!! -->
+    package="com.budgifydev.budgify">
 
     <!-- === Required Permissions === -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/> <!-- If targetSdk 34+ for AlarmService -->
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
-        android:label="Budgify"
+        android:label="Budgilo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="true">
@@ -23,68 +19,48 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:label="Budgilo"
             android:launchMode="singleTask"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait"
+            android:resizeableActivity="true"
             android:showWhenLocked="true"
             android:turnScreenOn="true">
+            <!-- The line android:screenOrientation="portrait" has been removed -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme"/>
+                android:resource="@style/NormalTheme" />
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Intent for when MainActivity is launched by an alarm -->
-            <intent-filter>
-                <action android:name="com.example.budgify.ALARM_TRIGGER"/> <!-- !!! USE YOUR PACKAGE NAME !!! -->
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
+
             <!-- For AwesomeNotifications body tap -->
             <intent-filter>
-                <action android:name="FLUTTER_NOTIFICATION_CLICK"/>
-                <category android:name="android.intent.category.DEFAULT"/>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-
-        <!-- Alarm Package Components (com.gdelataillade.alarm) -->
-        <service
-            android:name="com.gdelataillade.alarm.services.AlarmService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback"
-            android:stopWithTask="false"/>
-        <receiver
-            android:name="com.gdelataillade.alarm.receivers.AlarmReceiver"
-            android:enabled="true"
-            android:exported="false"> <!-- Keep false unless system needs to directly access it beyond BOOT_COMPLETED -->
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
 
         <!-- Awesome Notifications Components -->
         <receiver
             android:name="com.awesome.notifications.notifications.core.broadcasters.ScheduledNotificationReceiver"
-            android:exported="false"/>
+            android:exported="false" />
         <receiver
             android:name="com.awesome.notifications.notifications.core.broadcasters.DismissedNotificationReceiver"
-            android:exported="false"/>
+            android:exported="false" />
         <receiver
             android:name="com.awesome.notifications.notifications.core.broadcasters.ActionReceiver"
-            android:exported="false"/>
+            android:exported="false" />
         <receiver
             android:name="com.awesome.notifications.notifications.core.broadcasters.BootReceiver"
             android:enabled="true"
-            android:exported="true"> <!-- Must be exported to receive system broadcasts -->
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
         <service
@@ -92,27 +68,28 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="shortService"
-            android:stopWithTask="false"/>
+            android:stopWithTask="false" />
 
-        <!-- Flutter and AdMob config -->
+        <!-- Flutter config -->
         <meta-data
             android:name="flutterEmbedding"
-            android:value="2"/>
-        <!-- Replace with your actual AdMob App ID for release -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
-
+            android:value="2" />
     </application>
 
-    <!-- For apps targeting Android 11 (API level 30) or higher,
-         if you need to query or interact with specific packages -->
+    <!-- This section is correct, no changes needed here -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
-        <!-- Add other query intents if your app needs them, e.g., for specific browsers or mail clients -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+          <action android:name="android.intent.action.SENDTO" />
+          <data android:scheme="mailto" />
+        </intent>
     </queries>
 
 </manifest>

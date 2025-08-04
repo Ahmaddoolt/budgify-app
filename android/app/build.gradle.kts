@@ -42,8 +42,10 @@ android {
         applicationId = "com.budgifydev.budgify"
         minSdk = 23
         targetSdk = 35 // or use flutter.targetSdkVersion if defined in your project
-        versionCode = 1   // replace with flutter.versionCode if defined
-        versionName = "1.0" // replace with flutter.versionName if defined
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+
+        multiDexEnabled = true
     }
 
     buildTypes {

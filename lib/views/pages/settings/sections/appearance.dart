@@ -1,4 +1,9 @@
+// lib/views/pages/settings/appearance_settings.dart
+
+import 'package:budgify/core/constants/currencies.dart';
 import 'package:budgify/core/themes/app_colors.dart';
+import 'package:budgify/core/utils/scale_config.dart';
+import 'package:budgify/domain/models/currency.dart';
 import 'package:budgify/viewmodels/providers/currency_symbol.dart';
 import 'package:budgify/viewmodels/providers/lang_provider.dart';
 import 'package:budgify/viewmodels/providers/theme_provider.dart';
@@ -16,7 +21,10 @@ class AppearanceSettingsSection extends ConsumerWidget {
     final currentLocale = ref.watch(languageProvider);
     final currentLanguageName = _localeToLanguage(currentLocale);
     final currentThemeOption = ref.watch(themeNotifierProvider);
-    final currentCurrency = ref.watch(currencyProvider).currencySymbol;
+
+    // Get the full Currency object from the provider's state
+    final appCurrencyState = ref.watch(currencyProvider);
+    final currentCurrency = appCurrencyState.displayCurrency;
 
     return SettingsSectionCard(
       title: 'Appearance'.tr,
@@ -30,37 +38,54 @@ class AppearanceSettingsSection extends ConsumerWidget {
 
   Widget buildCurrencyPopup(
     WidgetRef ref,
-    String currentCurrency,
+    Currency currentCurrency,
     BuildContext context,
   ) {
-    const availableCurrencies = [
-      '\$',
-      '€',
-      '£',
-      '¥',
-      'A\$',
-      'C\$',
-      'Fr',
-      '₹',
-      '₩',
-      '₺',
-      '₽',
-      '﷼',
-      'د.إ',
-      'E£',
-      'ج.م',
-    ];
+    return Material(
+      color: Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          _showCurrencySearchDialog(context, ref);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Currency'.tr,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${currentCurrency.code.tr} (${currentCurrency.symbol})',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_drop_down,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    return buildPopupMenu<String>(
-      label: 'Currency'.tr,
-      selectedValue: currentCurrency.isEmpty ? '\$' : currentCurrency,
-      items: availableCurrencies,
-      itemBuilder: (currency) => Text(currency),
-      onSelected: (value) {
-        HapticFeedback.lightImpact();
-        ref.read(currencyProvider.notifier).setCurrencySymbol(value);
-      },
+  void _showCurrencySearchDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
       context: context,
+      builder: (context) => _CurrencySearchDialog(ref: ref),
     );
   }
 
@@ -78,7 +103,6 @@ class AppearanceSettingsSection extends ConsumerWidget {
       'Chinese',
       'Portuguese',
     ];
-
     return buildPopupMenu<String>(
       label: 'Language'.tr,
       selectedValue: currentLanguageName,
@@ -101,24 +125,23 @@ class AppearanceSettingsSection extends ConsumerWidget {
       label: 'Theme'.tr,
       selectedValue: currentThemeOption,
       items: ThemeModeOption.values.toList(),
-      itemBuilder:
-          (themeOption) => Row(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                margin: const EdgeInsets.only(right: 8, left: 8),
-                decoration: BoxDecoration(
-                  color: _getThemeColor(themeOption),
-                  shape: BoxShape.rectangle,
-                ),
-              ),
-              Text(
-                _themeToTranslationKey(themeOption).tr,
-                style: const TextStyle(fontSize: 14),
-              ),
-            ],
+      itemBuilder: (themeOption) => Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            margin: const EdgeInsets.only(right: 8, left: 8),
+            decoration: BoxDecoration(
+              color: _getThemeColor(themeOption),
+              shape: BoxShape.rectangle,
+            ),
           ),
+          Text(
+            _themeToTranslationKey(themeOption).tr,
+            style: const TextStyle(fontSize: 14),
+          ),
+        ],
+      ),
       onSelected: (selectedOption) {
         HapticFeedback.lightImpact();
         ref.read(themeNotifierProvider.notifier).setTheme(selectedOption);
@@ -129,22 +152,17 @@ class AppearanceSettingsSection extends ConsumerWidget {
 
   Widget buildPopupMenu<T>({
     required String label,
-    required T
-    selectedValue, // The actual selected data value (String, Enum, etc.)
-    required List<T> items, // List of all possible data values
-    required Widget Function(T item)
-    itemBuilder, // Function to build the display widget for an item
-    required ValueChanged<T>
-    onSelected, // Callback with the selected data value
-    required context,
+    required T selectedValue,
+    required List<T> items,
+    required Widget Function(T item) itemBuilder,
+    required ValueChanged<T> onSelected,
+    required BuildContext context,
   }) {
     return Material(
-      // ignore: deprecated_member_use
       color: Theme.of(context).colorScheme.secondary.withOpacity(0.05),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () {
-          // --- Position calculation (keep as before or adjust) ---
           final RenderBox button = context.findRenderObject() as RenderBox;
           final RenderBox overlay =
               Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -157,33 +175,28 @@ class AppearanceSettingsSection extends ConsumerWidget {
               ),
             ),
             Offset.zero & overlay.size,
-          ).shift(const Offset(0, 40)); // Shift dropdown below the button row
+          ).shift(const Offset(0, 40));
 
           showMenu<T>(
-            // Use the generic type T
             context: context,
             position: position,
-            // ignore: deprecated_member_use
             color: Theme.of(context).cardColor.withOpacity(0.98),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12 * 0.75),
             ),
             elevation: 4,
-            items:
-                items
-                    .map(
-                      (item) => PopupMenuItem<T>(
-                        // Use T here too
-                        value: item, // The actual data value T
-                        height: 40,
-                        // Use the provided builder to create the widget for the list item
-                        child: itemBuilder(item),
-                      ),
-                    )
-                    .toList(),
+            items: items
+                .map(
+                  (item) => PopupMenuItem<T>(
+                    value: item,
+                    height: 40,
+                    child: itemBuilder(item),
+                  ),
+                )
+                .toList(),
           ).then((selected) {
             if (selected != null) {
-              onSelected(selected); // Pass back the selected data value T
+              onSelected(selected);
             }
           });
         },
@@ -201,10 +214,8 @@ class AppearanceSettingsSection extends ConsumerWidget {
                 ),
               ),
               Row(
-                mainAxisSize:
-                    MainAxisSize.min, // Prevent row from taking too much space
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Use the item builder to display the currently selected value
                   itemBuilder(selectedValue),
                   const SizedBox(width: 8),
                   Icon(
@@ -220,7 +231,6 @@ class AppearanceSettingsSection extends ConsumerWidget {
     );
   }
 
-  // Helper methods
   String _localeToLanguage(Locale locale) {
     const languageMap = {
       'es': 'Spanish',
@@ -258,5 +268,104 @@ class AppearanceSettingsSection extends ConsumerWidget {
         return AppColors.darkRedColor;
     }
   }
+}
 
+class _CurrencySearchDialog extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+  const _CurrencySearchDialog({required this.ref});
+
+  @override
+  ConsumerState<_CurrencySearchDialog> createState() =>
+      _CurrencySearchDialogState();
+}
+
+class _CurrencySearchDialogState extends ConsumerState<_CurrencySearchDialog> {
+  late final TextEditingController _searchController;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredCurrencies = availableCurrencies.where((currency) {
+      final query = _searchQuery.toLowerCase();
+      final translatedName = currency.code.tr.toLowerCase();
+      return translatedName.contains(query) ||
+          currency.code.toLowerCase().contains(query);
+    }).toList();
+
+    return AlertDialog(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      title: Text('Select Currency'.tr),
+      contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 0),
+      content: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Search by name or code...'.tr,
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: filteredCurrencies.length,
+                itemBuilder: (context, index) {
+                  final currency = filteredCurrencies[index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('${currency.code.tr} (${currency.code})'),
+                    trailing: Text(currency.symbol),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      // Call the correct method to SAVE the default currency
+                      widget.ref
+                          .read(currencyProvider.notifier)
+                          .saveDefaultCurrency(currency.code);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel'.tr),
+        ),
+      ],
+    );
+  }
 }

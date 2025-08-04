@@ -1,9 +1,10 @@
+// UPDATED: Import the new responsive utility
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:flutter/material.dart';
 import 'package:budgify/core/themes/app_colors.dart';
 
 class ProgressRow extends StatelessWidget {
-  final double progress; // Progress in percentage (0.0 to 1.0)
+  final double progress;
   final String label;
   final String amount;
   final Color progressColor;
@@ -20,37 +21,36 @@ class ProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scale = context.scaleConfig;
+    // UPDATED: Use the new responsive extension
+    final responsive = context.responsive;
     final safeProgress = progress.isNaN ? 0.0 : progress.clamp(0.0, 1.0);
 
-    // Responsive sizing
     final progressBarWidth =
-        scale.isTablet
-            ? scale.widthPercentage(0.4) // Wider on tablets
-            : scale.widthPercentage(0.45); // Slightly narrower on phones
+        responsive.isTablet
+            ? responsive.widthPercent(0.4)
+            : responsive.widthPercent(0.45);
 
     final progressBarHeight =
-        scale.isTablet
-            ? scale.scale(22) // Slightly taller on tablets
-            : scale.scale(20);
+        responsive.isTablet
+            ? responsive.setHeight(22)
+            : responsive.setHeight(20);
 
-    final borderRadius = scale.scale(10);
+    final borderRadius = responsive.setWidth(10);
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: scale.scale(2)),
+      padding: EdgeInsets.symmetric(vertical: responsive.setHeight(2)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: progressBarWidth,
-              minWidth: progressBarWidth, // Ensure consistent width
+              minWidth: progressBarWidth,
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return Stack(
                   children: [
-                    // Background container
                     Container(
                       width: constraints.maxWidth,
                       height: progressBarHeight,
@@ -59,7 +59,6 @@ class ProgressRow extends StatelessWidget {
                         borderRadius: BorderRadius.circular(borderRadius),
                       ),
                     ),
-                    // Foreground progress bar
                     Container(
                       width: constraints.maxWidth * safeProgress,
                       height: progressBarHeight,
@@ -67,8 +66,7 @@ class ProgressRow extends StatelessWidget {
                         gradient: _getProgressGradient(type),
                         borderRadius: BorderRadius.circular(borderRadius),
                         boxShadow: [
-                          if (safeProgress >
-                              0.05) // Only add shadow if progress is visible
+                          if (safeProgress > 0.05)
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
                               blurRadius: 2,
@@ -82,23 +80,6 @@ class ProgressRow extends StatelessWidget {
               },
             ),
           ),
-
-          // Amount display with responsive sizing
-          // if (amount.isNotEmpty)
-          //   SizedBox(
-          //     width: scale.isTablet
-          //         ? scale.widthPercentage(1)
-          //         : scale.widthPercentage(0.2),
-          //     child: Text(
-          //       amount,
-          //       style: TextStyle(
-          //         fontSize: scale.scaleText(scale.isTablet ? 13 : 14),
-          //         fontWeight: FontWeight.w500,
-          //       ),
-          //       maxLines: 1,
-          //       overflow: TextOverflow.ellipsis,
-          //     ),
-          //   ),
         ],
       ),
     );
@@ -113,14 +94,14 @@ class ProgressRow extends StatelessWidget {
 
   LinearGradient _getProgressGradient(String? type) {
     if (type == "Cash" || type == "Bank" || type == "Digital") {
-      return LinearGradient(
-        colors: [AppColors.accentColor, const Color.fromARGB(255, 0, 124, 140)],
+      return const LinearGradient(
+        colors: [AppColors.accentColor, Color.fromARGB(255, 0, 124, 140)],
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
       );
     }
-    return LinearGradient(
-      colors: [AppColors.accentColor2, const Color.fromARGB(255, 183, 44, 2)],
+    return const LinearGradient(
+      colors: [AppColors.accentColor2, Color.fromARGB(255, 183, 44, 2)],
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     );

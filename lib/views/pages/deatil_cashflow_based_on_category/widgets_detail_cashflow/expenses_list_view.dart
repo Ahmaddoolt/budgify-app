@@ -1,3 +1,4 @@
+// UPDATED: Import the new responsive utility
 import 'package:budgify/core/themes/app_colors.dart';
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/domain/models/expense.dart';
@@ -29,9 +30,13 @@ class ExpensesListView extends StatelessWidget {
     required this.onDelete,
   });
 
+
+
+
   @override
   Widget build(BuildContext context) {
-    final scaleConfig = context.scaleConfig; // Access ScaleConfig via extension
+    // UPDATED: Use the new responsive extension
+    final responsive = context.responsive;
 
     if (expenses.isEmpty) {
       return Center(
@@ -40,13 +45,15 @@ class ExpensesListView extends StatelessWidget {
           children: [
             Lottie.asset(
               "assets/money_s.json",
-              width: scaleConfig.tabletScale(100), // Scaled for responsiveness
+              // UPDATED: Use setWidth for general scaling
+              width: responsive.setWidth(100),
               fit: BoxFit.fill,
             ),
             Text(
               'No Data found.'.tr,
               style: TextStyle(
-                fontSize: scaleConfig.tabletScaleText(11), // Scaled text
+                // UPDATED: Use setSp for font sizes
+                fontSize: responsive.setSp(11),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -57,7 +64,8 @@ class ExpensesListView extends StatelessWidget {
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(
-        horizontal: scaleConfig.tabletScale(20), // Scaled padding
+        // UPDATED: setWidth for horizontal padding
+        horizontal: responsive.setWidth(20),
       ),
       itemCount: expenses.length,
       itemBuilder: (context, index) {
@@ -70,7 +78,17 @@ class ExpensesListView extends StatelessWidget {
             );
             return wallets.isNotEmpty
                 ? wallets.first
-                : Wallet(id: 'default', name: 'Default', type: WalletType.cash);
+                : Wallet(
+                  id: 'default',
+                  name: 'Unknown Wallet',
+                  type: WalletType.cash,
+                  currencySymbol: '???', // Provide a default currency symbol
+                  isDefault: false,
+                  isEnabled:
+                      false, // Make it disabled by default so user knows something is wrong
+                  allowedTransactionType: WalletFunctionality.both,
+                  value: 0.0, currencyCode: '',
+                );
           },
         );
         debugPrint(
@@ -80,30 +98,30 @@ class ExpensesListView extends StatelessWidget {
         return Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(
-              scaleConfig.tabletScale(15), // Scaled border radius
+              // UPDATED: setWidth for border radius
+              responsive.setWidth(15),
             ),
           ),
           margin: EdgeInsets.symmetric(
-            vertical: scaleConfig.tabletScale(8), // Scaled margin
+            // UPDATED: setHeight for vertical margin
+            vertical: responsive.setHeight(8),
           ),
           elevation: 2,
           child: SizedBox(
-            width: scaleConfig.tabletScale(355), // Scaled card width
+            // UPDATED: setWidth for card width
+            width: responsive.setWidth(355),
             child: Padding(
-              padding: EdgeInsets.all(
-                scaleConfig.tabletScale(16), // Scaled padding
-              ),
+              // UPDATED: setWidth for all-around padding
+              padding: EdgeInsets.all(responsive.setWidth(16)),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(
                     iconCategory,
-                    size: scaleConfig.tabletScale(32), // Scaled icon size
+                    size: responsive.setWidth(32),
                     color: iconColor,
                   ),
-                  SizedBox(
-                    width: scaleConfig.tabletScale(12),
-                  ), // Scaled spacing
+                  SizedBox(width: responsive.setWidth(12)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,42 +129,36 @@ class ExpensesListView extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                              Icon(
+                            Icon(
                               Icons.title,
                               color: Colors.grey,
-                              size: scaleConfig.tabletScale(14),
+                              size: responsive.setWidth(14),
                             ),
-                            SizedBox(width: scaleConfig.tabletScale(2)),
+                            SizedBox(width: responsive.setWidth(2)),
                             Text(
                               expense.title,
                               style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(
-                                  12,
-                                ), // Scaled text
+                                fontSize: responsive.setSp(13),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(
-                          height: scaleConfig.tabletScale(2),
-                        ), // Scaled spacing
+                        SizedBox(height: responsive.setHeight(2)),
                         Row(
                           children: [
                             Icon(
                               Icons.money,
                               color: Colors.grey,
-                              size: scaleConfig.tabletScale(14),
+                              size: responsive.setWidth(14),
                             ),
-                            SizedBox(width: scaleConfig.tabletScale(2)),
+                            SizedBox(width: responsive.setWidth(2)),
                             Consumer(
                               builder:
                                   (context, ref, _) => Text(
                                     getFormattedAmount(expense.amount, ref),
                                     style: TextStyle(
-                                      fontSize: scaleConfig.tabletScaleText(
-                                        10,
-                                      ), // Scaled text
+                                      fontSize: responsive.setSp(12),
                                       color: Colors.grey,
                                     ),
                                   ),
@@ -158,41 +170,35 @@ class ExpensesListView extends StatelessWidget {
                             Icon(
                               Icons.date_range,
                               color: Colors.grey,
-                              size: scaleConfig.tabletScale(14),
+                              size: responsive.setWidth(14),
                             ),
-                            SizedBox(width: scaleConfig.tabletScale(2)),
+                            SizedBox(width: responsive.setWidth(2)),
                             Text(
                               DateFormat('yyyy-MM-dd').format(expense.date),
                               style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(
-                                  10,
-                                ), // Scaled text
+                                fontSize: responsive.setSp(12),
                                 color: Colors.grey,
                               ),
                             ),
                           ],
                         ),
-
                         Row(
                           children: [
                             Icon(
                               Icons.wallet,
                               color: Colors.grey,
-                              size: scaleConfig.tabletScale(14),
+                              size: responsive.setWidth(14),
                             ),
-                            SizedBox(width: scaleConfig.tabletScale(2)),
+                            SizedBox(width: responsive.setWidth(2)),
                             Text(
                               selectedWallet.name,
                               style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(
-                                  10,
-                                ), // Scaled text
+                                fontSize: responsive.setSp(12),
                                 color: Colors.grey,
                               ),
                             ),
                           ],
                         ),
-
                         if (expense.notes != null && expense.notes!.isNotEmpty)
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,9 +206,7 @@ class ExpensesListView extends StatelessWidget {
                               Text(
                                 'Note: '.tr,
                                 style: TextStyle(
-                                  fontSize: scaleConfig.tabletScaleText(
-                                    10,
-                                  ), // Scaled text
+                                  fontSize: responsive.setSp(11),
                                   color: Colors.grey,
                                 ),
                               ),
@@ -210,9 +214,7 @@ class ExpensesListView extends StatelessWidget {
                                 child: Text(
                                   "${expense.notes}",
                                   style: TextStyle(
-                                    fontSize: scaleConfig.tabletScaleText(
-                                      10,
-                                    ), // Scaled text
+                                    fontSize: responsive.setSp(11),
                                     color: Colors.grey,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -229,7 +231,7 @@ class ExpensesListView extends StatelessWidget {
                     icon: Icon(
                       Icons.more_vert,
                       color: Colors.grey,
-                      size: scaleConfig.tabletScale(24), // Scaled icon size
+                      size: responsive.setWidth(24),
                     ),
                     onSelected: (value) {
                       if (value == 'Update') {
@@ -247,19 +249,13 @@ class ExpensesListView extends StatelessWidget {
                                 Icon(
                                   Icons.edit,
                                   color: AppColors.accentColor,
-                                  size: scaleConfig.tabletScale(
-                                    20,
-                                  ), // Scaled icon size
+                                  size: responsive.setWidth(20),
                                 ),
-                                SizedBox(
-                                  width: scaleConfig.tabletScale(8),
-                                ), // Scaled spacing
+                                SizedBox(width: responsive.setWidth(8)),
                                 Text(
                                   'Update'.tr,
                                   style: TextStyle(
-                                    fontSize: scaleConfig.tabletScaleText(
-                                      14,
-                                    ), // Scaled text
+                                    fontSize: responsive.setSp(14),
                                   ),
                                 ),
                               ],
@@ -272,19 +268,13 @@ class ExpensesListView extends StatelessWidget {
                                 Icon(
                                   Icons.delete,
                                   color: Colors.red,
-                                  size: scaleConfig.tabletScale(
-                                    20,
-                                  ), // Scaled icon size
+                                  size: responsive.setWidth(20),
                                 ),
-                                SizedBox(
-                                  width: scaleConfig.tabletScale(8),
-                                ), // Scaled spacing
+                                SizedBox(width: responsive.setWidth(8)),
                                 Text(
                                   'Delete'.tr,
                                   style: TextStyle(
-                                    fontSize: scaleConfig.tabletScaleText(
-                                      14,
-                                    ), // Scaled text
+                                    fontSize: responsive.setSp(14),
                                     color: Colors.red,
                                   ),
                                 ),

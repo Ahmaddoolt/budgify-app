@@ -1,8 +1,10 @@
+// lib/views/pages/deatil_cashflow_based_on_category/widgets_detail_cashflow/category_expenses_grid_page.dart
+
 import 'package:budgify/core/themes/app_colors.dart';
+import 'package:budgify/core/utils/format_amount.dart';
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/domain/models/expense.dart';
 import 'package:budgify/domain/models/wallet.dart';
-import 'package:budgify/core/utils/format_amount.dart';
 import 'package:budgify/core/utils/no_data_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,9 +47,8 @@ class CategoryExpensesGridPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scaleConfig = ScaleConfig(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final padding = scaleConfig.scale(screenWidth * 0.05);
+    final responsive = context.responsive;
+    final padding = responsive.widthPercent(0.05);
 
     debugPrint(
       'CategoryExpensesGridPage: Rendering with ${expenses.length} expenses',
@@ -55,19 +56,19 @@ class CategoryExpensesGridPage extends ConsumerWidget {
 
     if (expenses.isEmpty) {
       debugPrint('No expenses to display');
-      return NoDataWidget();
+      return const NoDataWidget();
     }
 
     return GridView.builder(
       padding: EdgeInsets.symmetric(
         horizontal: padding,
-        vertical: scaleConfig.scale(10),
+        vertical: responsive.setHeight(10),
       ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: scaleConfig.isTablet ? 3 : 2, // 3 columns on tablets
-        crossAxisSpacing: scaleConfig.scale(10),
-        mainAxisSpacing: scaleConfig.scale(10),
-        childAspectRatio: 0.85, // Taller cards for better content fit
+        crossAxisCount: responsive.isTablet ? 3 : 2,
+        crossAxisSpacing: responsive.setWidth(10),
+        mainAxisSpacing: responsive.setHeight(10),
+        childAspectRatio: 0.85,
       ),
       itemCount: expenses.length,
       itemBuilder: (context, index) {
@@ -80,26 +81,31 @@ class CategoryExpensesGridPage extends ConsumerWidget {
             );
             return Wallet(
               id: 'default',
-              name: 'Default',
+              name: 'Unknown Wallet',
               type: WalletType.cash,
+              currencyCode: '???', // Add code for model consistency
+              currencySymbol: '?', // Add symbol for model consistency
+              isDefault: false,
+              isEnabled: false,
+              allowedTransactionType: WalletFunctionality.both,
+              value: 0.0,
             );
           },
         );
         Color? cardcolor = Theme.of(context).appBarTheme.backgroundColor;
         Color? helpercolor = Theme.of(context).scaffoldBackgroundColor;
         return GestureDetector(
-          onTapDown:
-              (details) =>
-                  _showPopupMenu(context, expense, details.globalPosition),
+          onTapDown: (details) =>
+              _showPopupMenu(context, expense, details.globalPosition),
           child: Card(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(scaleConfig.scale(12)),
+              borderRadius: BorderRadius.circular(responsive.setWidth(12)),
             ),
             elevation: 4,
             color: cardcolor,
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(scaleConfig.scale(12)),
+                borderRadius: BorderRadius.circular(responsive.setWidth(12)),
                 gradient: LinearGradient(
                   colors: [
                     cardcolor!,
@@ -107,14 +113,10 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                     cardcolor,
                     cardcolor,
                     cardcolor,
-
                     helpercolor.withOpacity(0.3),
-
                     cardcolor,
                     cardcolor,
-
                     helpercolor.withOpacity(0.3),
-
                     cardcolor,
                     cardcolor,
                     cardcolor,
@@ -125,25 +127,24 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                   end: Alignment.bottomRight,
                 ),
               ),
-              padding: EdgeInsets.all(scaleConfig.scale(12)),
+              padding: EdgeInsets.all(responsive.setWidth(12)),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header: Icon and Title
                   Row(
                     children: [
                       Icon(
                         iconCategory,
-                        size: scaleConfig.scale(20),
+                        size: responsive.setWidth(20),
                         color: iconColor,
                       ),
-                      SizedBox(width: scaleConfig.scale(8)),
+                      SizedBox(width: responsive.setWidth(8)),
                       Expanded(
                         child: Text(
                           expense.title,
                           style: TextStyle(
-                            fontSize: scaleConfig.scaleText(12),
+                            fontSize: responsive.setSp(13),
                             fontWeight: FontWeight.bold,
                             color: AppColors.textColorDarkTheme,
                           ),
@@ -153,19 +154,22 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  // SizedBox(height: scaleConfig.scale(3)),
-                  // Details
                   Row(
                     children: [
                       Text(
                         'Amount: '.tr,
-                        style: TextStyle(fontSize: scaleConfig.scaleText(9)),
+                        style: TextStyle(fontSize: responsive.setSp(11)),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(width: 1),
+                      const SizedBox(width: 1),
+                      // --- THE FIX: Prepend the expense's own currency symbol ---
                       Text(
-                        getFormattedAmount(expense.amount, ref),
-                        style: TextStyle(fontSize: scaleConfig.scaleText(9)),
+                        '${expense.currencySymbol} ${getFormattedAmount(expense.amount, ref)}',
+                        style: TextStyle(
+                            fontSize: responsive.setSp(11),
+                            color: expense.isIncome
+                                ? AppColors.accentColor
+                                : AppColors.accentColor2),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -174,13 +178,13 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                     children: [
                       Text(
                         'Date: '.tr,
-                        style: TextStyle(fontSize: scaleConfig.scaleText(9)),
+                        style: TextStyle(fontSize: responsive.setSp(11)),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(width: 1),
+                      const SizedBox(width: 1),
                       Text(
                         DateFormat('yyyy-MM-dd').format(expense.date),
-                        style: TextStyle(fontSize: scaleConfig.scaleText(9)),
+                        style: TextStyle(fontSize: responsive.setSp(11)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -190,7 +194,7 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                       Text(
                         'Wallet'.tr,
                         style: TextStyle(
-                          fontSize: scaleConfig.scaleText(9),
+                          fontSize: responsive.setSp(11),
                           color: AppColors.textColorDarkTheme.withOpacity(0.8),
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -198,15 +202,15 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                       Text(
                         ': ',
                         style: TextStyle(
-                          fontSize: scaleConfig.scaleText(9),
+                          fontSize: responsive.setSp(11),
                           color: AppColors.textColorDarkTheme.withOpacity(0.8),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(width: 1),
+                      const SizedBox(width: 1),
                       Text(
                         wallet.name,
-                        style: TextStyle(fontSize: scaleConfig.scaleText(9)),
+                        style: TextStyle(fontSize: responsive.setSp(11)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -216,16 +220,18 @@ class CategoryExpensesGridPage extends ConsumerWidget {
                       children: [
                         Text(
                           'Note: '.tr,
-                          style: TextStyle(fontSize: scaleConfig.scaleText(9)),
+                          style: TextStyle(fontSize: responsive.setSp(11)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(width: 1),
-                        Text(
-                          '${expense.notes}',
-                          style: TextStyle(fontSize: scaleConfig.scaleText(9)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(width: 1),
+                        Expanded(
+                          child: Text(
+                            '${expense.notes}',
+                            style: TextStyle(fontSize: responsive.setSp(11)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -239,7 +245,7 @@ class CategoryExpensesGridPage extends ConsumerWidget {
   }
 
   void _showPopupMenu(BuildContext context, CashFlow expense, Offset position) {
-    final scaleConfig = ScaleConfig(context);
+    final responsive = context.responsive;
     Color? cardcolor = Theme.of(context).appBarTheme.backgroundColor;
 
     showMenu(
@@ -259,14 +265,14 @@ class CategoryExpensesGridPage extends ConsumerWidget {
               Icon(
                 Icons.edit,
                 color: AppColors.accentColor,
-                size: scaleConfig.scale(16),
+                size: responsive.setWidth(16),
               ),
-              SizedBox(width: scaleConfig.scale(6)),
+              SizedBox(width: responsive.setWidth(6)),
               Text(
                 'Update'.tr,
                 style: TextStyle(
                   color: AppColors.textColorDarkTheme,
-                  fontSize: scaleConfig.scaleText(12),
+                  fontSize: responsive.setSp(12),
                 ),
               ),
             ],
@@ -279,14 +285,14 @@ class CategoryExpensesGridPage extends ConsumerWidget {
               Icon(
                 Icons.delete,
                 color: Colors.red,
-                size: scaleConfig.scale(16),
+                size: responsive.setWidth(16),
               ),
-              SizedBox(width: scaleConfig.scale(6)),
+              SizedBox(width: responsive.setWidth(6)),
               Text(
                 'Delete'.tr,
                 style: TextStyle(
                   color: Colors.red,
-                  fontSize: scaleConfig.scaleText(12),
+                  fontSize: responsive.setSp(12),
                 ),
               ),
             ],

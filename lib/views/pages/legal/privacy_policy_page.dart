@@ -105,15 +105,15 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
                 children: [
                   Text(
                     'Privacy Policy'.tr,
-                    style: TextStyle(color: Colors.white , fontSize: 17),
+                    style: TextStyle(color: Colors.white, fontSize: 17),
                   ),
-                  UrlLauncherButton(
-                    url:
-                        'https://doc-hosting.flycricket.io/budgify-privacy-policy/2f72fcc0-a478-479a-8519-09a0e0d7ce34/privacy',
-                    label: 'Open Privacy Policy',
-                  ),
+                  // UrlLauncherButton(
+                  //   url:
+                  //       'https://doc-hosting.flycricket.io/budgify-privacy-policy/2f72fcc0-a478-479a-8519-09a0e0d7ce34/privacy',
+                  //   label: 'Open Privacy Policy',
+                  // ),
                 ],
-              ), // Key exists
+              ),
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -122,6 +122,7 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
                     // ignore: deprecated_member_use
                     colors: [
                       colorScheme.primary,
+                      // ignore: deprecated_member_use
                       colorScheme.primary.withOpacity(0.8),
                     ],
                   ),
@@ -139,107 +140,102 @@ class _PrivacyPolicyPageState extends State<PrivacyPolicyPage> {
             padding: const EdgeInsets.all(16.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // --- Introduction ---
                 _buildSectionTitle(
                   'PRIVACY POLICY'.tr,
                   titleStyle,
-                ), // Key exists
+                ), 
                 _buildBodyText(
                   'Last updated: %s'.trArgs([yourLastUpdatedDate]),
                   bodyStyle.copyWith(fontStyle: FontStyle.italic),
-                ), // Use interpolation or a dedicated key
+                ), 
                 const SizedBox(height: 16),
                 _buildBodyText(
                   'Privacy Notice Intro'.trArgs([yourCompanyName]),
                   bodyStyle,
-                ), // Use dedicated key + interpolation
+                ),
                 const SizedBox(height: 8),
                 _buildListItem(
                   'Privacy Notice App Usage'.tr,
                   bodyStyle,
-                ), // Key exists
+                ), 
                 _buildListItem(
                   'Privacy Notice Engagement'.tr,
                   bodyStyle,
-                ), // Key exists
+                ), 
                 const SizedBox(height: 16),
                 _buildBodyText(
                   'Privacy Notice Questions'.trArgs([yourContactEmail]),
                   bodyStyle,
-                ), // Use dedicated key + interpolation
+                ), 
                 const SizedBox(height: 24),
                 _buildDivider(),
 
-                // --- Summary of Key Points ---
                 _buildSectionTitle(
                   'SUMMARY OF KEY POINTS'.tr,
                   heading1Style,
-                ), // Key exists
+                ), 
                 const SizedBox(height: 8),
                 _buildBodyText(
                   'Summary Intro'.tr,
                   shortSummaryStyle,
-                ), // Key exists
+                ), 
                 const SizedBox(height: 16),
                 _buildSummaryPoint(
-                  'Summary What Process'.tr, // Key exists
-                  // Modify description key if needed to include examples or keep generic
-                  'Summary What Process Desc'.tr, // Key exists
+                  'Summary What Process'.tr, 
+                  'Summary What Process Desc'.tr, 
                   heading2Style,
                   bodyStyle,
                 ),
                 _buildSummaryPoint(
-                  'Summary Sensitive Process'.tr, // Key exists
+                  'Summary Sensitive Process'.tr, 
                   'Summary Sensitive Process Desc'
-                      .tr, // Key exists (Adjust content in Lang.dart)
+                      .tr, 
                   heading2Style,
                   bodyStyle,
                 ),
                 _buildSummaryPoint(
-                  'Summary Third Party'.tr, // Key exists
+                  'Summary Third Party'.tr, 
                   'Summary Third Party Desc'
-                      .tr, // Key exists (Adjust content in Lang.dart)
+                      .tr, 
                   heading2Style,
                   bodyStyle,
                 ),
                 _buildSummaryPoint(
-                  'Summary How Process'.tr, // Key exists
-                  'Summary How Process Desc'.tr, // Key exists
+                  'Summary How Process'.tr, 
+                  'Summary How Process Desc'.tr,
                   heading2Style,
                   bodyStyle,
                 ),
                 _buildSummaryPoint(
-                  'Summary Share Situations'.tr, // Key exists
-                  'Summary Share Situations Desc'.tr, // Key exists
+                  'Summary Share Situations'.tr, 
+                  'Summary Share Situations Desc'.tr, 
                   heading2Style,
                   bodyStyle,
                 ),
                 _buildSummaryPoint(
-                  'Summary Your Rights'.tr, // Key exists
-                  'Summary Your Rights Desc'.tr, // Key exists
+                  'Summary Your Rights'.tr, 
+                  'Summary Your Rights Desc'.tr, 
                   heading2Style,
                   bodyStyle,
                 ),
                 _buildSummaryPoint(
-                  'Summary Exercise Rights'.tr, // Key exists
-                  // Modify description key if needed to include specific method
+                  'Summary Exercise Rights'.tr, 
                   'Summary Exercise Rights Desc'.trArgs([
                     yourContactEmail,
-                  ]), // Use dedicated key + interpolation
+                  ]), 
                   heading2Style,
                   bodyStyle,
                 ),
                 const SizedBox(height: 24),
                 _buildDivider(),
 
-                // --- Table of Contents ---
                 _buildSectionTitle(
                   'TABLE OF CONTENTS'.tr,
                   heading1Style,
-                ), // Key exists
+                ), 
                 const SizedBox(height: 8),
-                _buildTocItem('TOC 1'.tr, bodyStyle), // Key exists
-                _buildTocItem('TOC 2'.tr, bodyStyle), // Key exists
+                _buildTocItem('TOC 1'.tr, bodyStyle), 
+                _buildTocItem('TOC 2'.tr, bodyStyle),
                 _buildTocItem('TOC 3'.tr, bodyStyle), // Key exists
                 _buildTocItem('TOC 4'.tr, bodyStyle), // Key exists
                 _buildTocItem('TOC 5'.tr, bodyStyle), // Key exists

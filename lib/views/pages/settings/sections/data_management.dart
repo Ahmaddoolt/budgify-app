@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 
-
 class DataManagementSection extends ConsumerWidget {
   const DataManagementSection({super.key});
 
@@ -21,7 +20,7 @@ class DataManagementSection extends ConsumerWidget {
         ),
         SettingsNavigationButton(
           label: 'Clear Data'.tr,
-          onTap: () => SettingsUtils.deleteExpenses(context),
+          onTap: () => SettingsUtils.deleteExpenses(context, ref),
           iconColor: AppColors.accentColor2,
         ),
       ],

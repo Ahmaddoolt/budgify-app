@@ -1,26 +1,36 @@
+// lib/views/pages/home_page/budget/add_budget.dart
+
 import 'package:budgify/core/utils/snackbar_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+
+import '../../../../core/constants/currencies.dart';
 import '../../../../core/themes/app_colors.dart';
+import '../../../../data/repo/budget_repostiry.dart';
+import '../../../../data/repo/category_repositry.dart';
 import '../../../../domain/models/budget.dart';
 import '../../../../domain/models/category.dart';
-import '../../../../data/repo/category_repositry.dart';
-import '../../../../data/repo/budget_repostiry.dart';
-// import '../../../widgets/ads/intilized_ads.dart';
+import '../../../../domain/models/currency.dart';
+import '../../../../domain/models/wallet.dart';
+import '../../../../initialization.dart';
+import '../../../../viewmodels/providers/multi_currency_provider.dart';
+import '../../../../viewmodels/providers/wallet_provider.dart';
 
-class BudgetScreen extends StatefulWidget {
+class BudgetScreen extends ConsumerStatefulWidget {
   const BudgetScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _BudgetScreenState createState() => _BudgetScreenState();
 }
 
-class _BudgetScreenState extends State<BudgetScreen> {
+class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   final _formKey = GlobalKey<FormState>();
-  late Category _category;
+  Category? _category;
   double _budgetAmount = 0.0;
+  Currency? _budgetCurrency;
+
   late CategoryRepository _categoryRepository;
   late BudgetRepository _budgetRepository;
   List<Category> categoriesState = [];
@@ -29,7 +39,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   void initState() {
     super.initState();
+    _budgetCurrency = _getPermanentDefaultCurrency();
     _loadCategoriesAndBudgets();
+  }
+
+  Currency _getPermanentDefaultCurrency() {
+    final defaultCode = sharedPreferences.getString('currency_code') ?? 'USD';
+    return findCurrencyByCode(defaultCode);
   }
 
   Future<void> _loadCategoriesAndBudgets() async {
@@ -38,9 +54,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     setState(() {
       categoriesState = _categoryRepository.loadCategories();
-      if (categoriesState.isNotEmpty) {
-        _category = categoriesState.first;
-      }
     });
 
     _budgetRepository = BudgetRepository(categoriesState);
@@ -48,25 +61,42 @@ class _BudgetScreenState extends State<BudgetScreen> {
     existingBudgets = _budgetRepository.loadBudgets();
   }
 
-  bool _isCategoryAlreadyBudgeted(Category category) {
-    return existingBudgets.any((budget) => budget.categoryId == category.id);
+  bool _isCategoryAlreadyBudgeted(Category category, Currency currency) {
+    return existingBudgets.any((budget) =>
+        budget.categoryId == category.id &&
+        budget.currencyCode == currency.code);
   }
 
   @override
   Widget build(BuildContext context) {
     Color cardColor = Theme.of(context).colorScheme.primary;
-    // final adManager = InterstitialAdManager(); // Instantiate the ad manager
-    // adManager.loadAd();
+    final isMultiCurrencyEnabled = ref.watch(multiCurrencyProvider);
+
+    // --- NEW LOGIC: Determine which currencies are in use ---
+    final allWallets = ref.watch(walletProvider);
+    final uniqueUsedCurrencyCodes =
+        allWallets.map((w) => w.currencyCode).toSet();
+    final usedCurrencies = availableCurrencies
+        .where((c) => uniqueUsedCurrencyCodes.contains(c.code))
+        .toList();
+
+    // The currency dropdown should only be available if the user has it enabled
+    // AND has more than one currency across all wallets.
+    final canChangeCurrency =
+        isMultiCurrencyEnabled && usedCurrencies.length > 1;
+
+    final Currency currencyToUse =
+        _budgetCurrency ?? _getPermanentDefaultCurrency();
+
     return Form(
       key: _formKey,
       child: Container(
-        width: double.infinity, // Makes the container take up the full width
-        color: cardColor, // Set the desired background color
+        width: double.infinity,
+        color: cardColor,
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Aligns content to the start
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 16),
             Text(
@@ -79,57 +109,87 @@ class _BudgetScreenState extends State<BudgetScreen> {
             categoriesState.isEmpty
                 ? const CircularProgressIndicator()
                 : DropdownButtonFormField<Category>(
-                  dropdownColor: cardColor,
-                  style: const TextStyle(color: Colors.grey),
-                  decoration: InputDecoration(
-                    labelText: 'Category'.tr,
-                    labelStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                    value: _category,
+                    dropdownColor: cardColor,
+                    style: const TextStyle(color: Colors.grey),
+                    decoration: InputDecoration(
+                      labelText: 'Category'.tr,
+                      labelStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white54),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.accentColor),
+                      ),
                     ),
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white54),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.accentColor),
-                    ),
+                    items: categoriesState
+                        .where(
+                      (category) => category.type == CategoryType.expense,
+                    )
+                        .map((category) {
+                      return DropdownMenuItem<Category>(
+                        value: category,
+                        child: Row(
+                          children: [
+                            Icon(category.icon, color: category.color),
+                            const SizedBox(width: 8),
+                            Text(
+                              category.name.tr,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Please select a category.'.tr;
+                      }
+                      if (_isCategoryAlreadyBudgeted(value, currencyToUse)) {
+                        return 'Budget already exists for this category/currency.'
+                            .tr;
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {
+                      setState(() {
+                        _category = value;
+                      });
+                    },
                   ),
-                  items:
-                      categoriesState
-                          .where(
-                            (category) => category.type == CategoryType.expense,
-                          )
-                          .map((category) {
-                            return DropdownMenuItem<Category>(
-                              value: category,
-                              child: Row(
-                                children: [
-                                  Icon(category.icon, color: category.color),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    category.name.tr,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                            );
-                          })
-                          .toList(),
-                  validator: (value) {
-                    if (value == null) {
-                      return 'Please select a category.'.tr;
-                    }
-                    if (_isCategoryAlreadyBudgeted(value)) {
-                      return 'Budget already exists for this category.'.tr;
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    setState(() {
-                      _category = value!;
-                    });
-                  },
+            if (canChangeCurrency)
+              DropdownButtonFormField<Currency>(
+                value: _budgetCurrency,
+                dropdownColor: cardColor,
+                style: const TextStyle(color: Colors.grey),
+                decoration: InputDecoration(
+                  labelText: 'Currency'.tr,
+                  labelStyle: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
+                // --- THE FIX: Use the filtered list of used currencies ---
+                items: usedCurrencies.map((currency) {
+                  return DropdownMenuItem<Currency>(
+                    value: currency,
+                    child: Text(
+                      '${currency.code.tr} (${currency.symbol})',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _budgetCurrency = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? 'Please select a currency.'.tr : null,
+              ),
             TextFormField(
               decoration: InputDecoration(
                 labelText: 'Budget Amount'.tr,
@@ -159,42 +219,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                  // <-- Add this shape property
-                  borderRadius: BorderRadius.circular(
-                    12.0,
-                  ), // <-- Set desired radius (e.g., 12)
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
                 backgroundColor: AppColors.accentColor,
               ),
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   final budget = Budget(
-                    categoryId: _category.id,
+                    categoryId: _category!.id,
                     budgetAmount: _budgetAmount,
+                    currencyCode: currencyToUse.code,
+                    currencySymbol: currencyToUse.symbol,
                   );
 
                   await _budgetRepository.addBudget(budget);
                   showFeedbackSnackbar(
-                    // ignore: use_build_context_synchronously
                     context,
                     'Budget added successfully!'.tr,
                   );
 
                   setState(() {
-                    _category = categoriesState.first;
+                    _formKey.currentState?.reset();
+                    _category = null;
                     _budgetAmount = 0.0;
-                    existingBudgets =
-                        _budgetRepository.loadBudgets(); // Refresh budget list
+                    _budgetCurrency = _getPermanentDefaultCurrency();
+                    existingBudgets = _budgetRepository.loadBudgets();
                   });
 
-                  // ignore: use_build_context_synchronously
-                  Navigator.of(context).pop(); // Close the bottom sheet
-                  // adManager.showAd();
+                  Navigator.of(context).pop();
                 }
               },
               child: Text(
                 'Add'.tr,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.black, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 16),
@@ -213,12 +271,11 @@ void showBudgetBottomSheet(BuildContext context) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder:
-        (context) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: const BudgetScreen(),
-        ),
+    builder: (context) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: const BudgetScreen(),
+    ),
   );
 }

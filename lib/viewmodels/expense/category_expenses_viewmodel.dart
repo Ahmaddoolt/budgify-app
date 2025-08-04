@@ -5,6 +5,7 @@ import 'package:budgify/viewmodels/providers/total_expenses_amount.dart';
 import 'package:budgify/viewmodels/providers/total_expenses_monthly.dart';
 import 'package:budgify/viewmodels/providers/total_incomes.dart';
 import 'package:budgify/viewmodels/providers/total_incomes_monthly.dart';
+import 'package:budgify/viewmodels/providers/wallet_provider.dart'; // <-- IMPORT WALLET PROVIDER
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CategoryExpensesViewModel {
@@ -36,8 +37,22 @@ class CategoryExpensesViewModel {
     }).toList();
   }
 
-  Future<void> deleteExpense(CashFlow expense, {required bool isIncome, required bool isMonth}) async {
+  Future<void> deleteExpense(CashFlow expense,
+      {required bool isIncome, required bool isMonth}) async {
+    // Delete from the database first
     await repository.deleteById(expense.id);
+
+    // --- THE FIX: Update wallet value ---
+    // Reverse the transaction's effect on the wallet.
+    // If we delete an income, we subtract from the wallet (isIncome: false).
+    // If we delete an expense, we add to the wallet (isIncome: true).
+    ref.read(walletProvider.notifier).updateWalletValue(
+          expense.walletType.id,
+          expense.amount,
+          isIncome: !expense.isIncome, // Notice the "!" to invert the logic
+        );
+
+    // Update other total-tracking providers
     ref.read(totalAmountCateProvider.notifier).decrementAmount(expense.amount);
 
     if (isIncome && isMonth) {
@@ -52,14 +67,30 @@ class CategoryExpensesViewModel {
   }
 
   Future<void> updateExpense(
-    CashFlow expense,
+    CashFlow oldExpense,
     CashFlow updatedExpense, {
     required bool isIncome,
     required bool isMonth,
   }) async {
+    // Update in the database
     await repository.updateExpense(updatedExpense);
 
-    final oldAmount = expense.amount;
+    // --- THE FIX: Update wallet value correctly ---
+    // Step 1: Reverse the old transaction from its wallet
+    ref.read(walletProvider.notifier).updateWalletValue(
+          oldExpense.walletType.id,
+          oldExpense.amount,
+          isIncome: !oldExpense.isIncome, // Reverse the old transaction
+        );
+    // Step 2: Apply the new transaction to its wallet (which might be a different wallet)
+    ref.read(walletProvider.notifier).updateWalletValue(
+          updatedExpense.walletType.id,
+          updatedExpense.amount,
+          isIncome: updatedExpense.isIncome, // Apply the new transaction
+        );
+
+    // Update other total-tracking providers
+    final oldAmount = oldExpense.amount;
     final newAmount = updatedExpense.amount;
 
     ref.read(totalAmountCateProvider.notifier).decrementAmount(oldAmount);
@@ -80,7 +111,8 @@ class CategoryExpensesViewModel {
     }
   }
 
-  void updateTotalAmountByCategory(String categoryName, {required bool isMonthly}) {
+  void updateTotalAmountByCategory(String categoryName,
+      {required bool isMonthly}) {
     ref.read(totalAmountCateProvider.notifier).updateTotalAmountByCategory(
           categoryName,
           isMonthly: isMonthly,
@@ -88,6 +120,8 @@ class CategoryExpensesViewModel {
   }
 }
 
-final categoryExpensesViewModelProvider = Provider<CategoryExpensesViewModel>((ref) {
+final categoryExpensesViewModelProvider =
+    Provider<CategoryExpensesViewModel>((ref) {
+  // Pass the ref to the ViewModel constructor
   return CategoryExpensesViewModel(ExpensesRepository(), ref);
 });

@@ -120,11 +120,11 @@ class TermsOfUseScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                UrlLauncherButton(
-                  url:
-                      'https://doc-hosting.flycricket.io/budgify-terms-of-use/160dfe11-3038-4c3a-ba97-10ce73ae7963/terms',
-                  label: 'Open Privacy Policy',
-                ),
+                // UrlLauncherButton(
+                //   url:
+                //       'https://doc-hosting.flycricket.io/budgify-terms-of-use/160dfe11-3038-4c3a-ba97-10ce73ae7963/terms',
+                //   label: 'Open Privacy Policy',
+                // ),
               ],
             ),
             const SizedBox(height: 8),

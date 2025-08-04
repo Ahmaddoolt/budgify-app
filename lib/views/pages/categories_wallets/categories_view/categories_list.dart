@@ -1,3 +1,5 @@
+// UPDATED: Import the new responsive utility
+import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/core/utils/snackbar_helper.dart';
 import 'package:budgify/viewmodels/providers/lang_provider.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +12,6 @@ import '../../../../data/repo/category_repositry.dart';
 import '../../../../data/repo/expenses_repository.dart';
 import '../../../../viewmodels/providers/category_list_provider.dart';
 import '../../../../viewmodels/providers/switchOnOffIncome.dart';
-import '../../../../core/utils/scale_config.dart';
 
 final categoryProvider =
     StateNotifierProvider<CategoryNotifier, List<Category>>((ref) {
@@ -37,7 +38,8 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
 
   @override
   Widget build(BuildContext context) {
-    final scale = context.scaleConfig;
+    // UPDATED: Use the new responsive extension
+    final responsive = context.responsive;
     final categories = ref.watch(categoryProvider);
     final switchState = ref.watch(switchProvider).isSwitched;
 
@@ -76,9 +78,14 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildCategoryGrid(sortedExpenseCategories, context, ref, scale),
+          _buildCategoryGrid(sortedExpenseCategories, context, ref, responsive),
           if (switchState)
-            _buildCategoryGrid(sortedIncomeCategories, context, ref, scale),
+            _buildCategoryGrid(
+              sortedIncomeCategories,
+              context,
+              ref,
+              responsive,
+            ),
         ],
       ),
     );
@@ -88,18 +95,21 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
     List<Category> categories,
     BuildContext context,
     WidgetRef ref,
-    ScaleConfig scale,
+    ResponsiveUtil responsive,
   ) {
     bool isArabic =
         ref.watch(languageProvider).toString() == "ar" ? true : false;
 
     return GridView.builder(
-      padding: EdgeInsets.all(scale.scale(16.0)),
+      padding: EdgeInsets.all(responsive.setWidth(16.0)),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: scale.isTablet ? 2.2 : 2, // Slightly taller on tablets
-        crossAxisSpacing: scale.scale(14.0),
-        mainAxisSpacing: scale.isTablet ? scale.scale(8.0) : scale.scale(10.0), // Adjusted spacing
+        childAspectRatio: responsive.isTablet ? 2.2 : 2,
+        crossAxisSpacing: responsive.setWidth(14.0),
+        mainAxisSpacing:
+            responsive.isTablet
+                ? responsive.setHeight(8.0)
+                : responsive.setHeight(10.0),
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {
@@ -111,40 +121,40 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
               Container(
                 decoration: BoxDecoration(
                   color: Colors.transparent.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(scale.scale(12)),
+                  borderRadius: BorderRadius.circular(responsive.setWidth(12)),
                 ),
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: scale.scale(10),
-                    vertical: scale.scale(15),
+                    horizontal: responsive.setWidth(10),
+                    vertical: responsive.setHeight(15),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       SizedBox(
-                        height: scale.scale(47),
-                        width: scale.scale(47),
+                        height: responsive.setHeight(47),
+                        width: responsive.setWidth(47),
                         child: Card(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                              scale.scale(12),
+                              responsive.setWidth(12),
                             ),
                           ),
                           color: category.color.withOpacity(0.8),
                           child: Icon(
                             category.icon,
                             color: Colors.white,
-                            size: scale.scale(24),
+                            size: responsive.setWidth(24),
                           ),
                         ),
                       ),
-                      SizedBox(width: scale.scale(4)),
+                      SizedBox(width: responsive.setWidth(4)),
                       Expanded(
                         child: Text(
                           category.name.tr,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: scale.tabletScaleText(9), // Adjusted for tablets
+                            fontSize: responsive.setSp(9),
                             fontWeight: FontWeight.bold,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -164,7 +174,7 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
                     icon: Icon(
                       Icons.close,
                       color: AppColors.accentColor2,
-                      size: scale.scale(17),
+                      size: responsive.setWidth(17),
                     ),
                     onPressed: () async {
                       showDialog(
@@ -177,13 +187,13 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
                                     Icons.warning_amber_rounded,
                                     color: AppColors.accentColor,
                                   ),
-                                  SizedBox(width: scale.scale(6)),
+                                  SizedBox(width: responsive.setWidth(6)),
                                   Text(
                                     'Delete Category'.tr,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.accentColor2,
-                                      fontSize: scale.tabletScaleText(13),
+                                      fontSize: responsive.setSp(13),
                                     ),
                                   ),
                                 ],
@@ -192,7 +202,7 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
                                 'Are you sure you want to delete this category? This action cannot be undone.'
                                     .tr,
                                 style: TextStyle(
-                                  fontSize: scale.tabletScaleText(11),
+                                  fontSize: responsive.setSp(11),
                                   color: Colors.white,
                                 ),
                               ),
@@ -204,7 +214,7 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
                                     style: TextStyle(
                                       color: AppColors.accentColor,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: scale.tabletScaleText(12),
+                                      fontSize: responsive.setSp(12),
                                     ),
                                   ),
                                 ),
@@ -232,7 +242,7 @@ class _CategoryListPageState extends ConsumerState<CategoryListPage>
                                     style: TextStyle(
                                       color: Colors.red,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: scale.tabletScaleText(12),
+                                      fontSize: responsive.setSp(12),
                                     ),
                                   ),
                                 ),

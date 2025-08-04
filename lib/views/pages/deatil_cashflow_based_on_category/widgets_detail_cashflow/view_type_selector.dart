@@ -1,6 +1,7 @@
+// UPDATED: Import the new responsive utility
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // For translations if needed
+import 'package:get/get.dart';
 
 class ViewTypeSelector extends StatelessWidget {
   final int chartType;
@@ -27,7 +28,8 @@ class ViewTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scaleConfig = ScaleConfig(context);
+    // UPDATED: Use the new responsive extension
+    final responsive = context.responsive;
     final theme = Theme.of(context);
 
     return PopupMenuButton<int>(
@@ -38,45 +40,47 @@ class ViewTypeSelector extends StatelessWidget {
           Icon(
             _getCurrentIcon(),
             color: Colors.white,
-            size: scaleConfig.scale(17),
+            // UPDATED: Use setWidth for general scaling like icon size
+            size: responsive.setWidth(17),
           ),
-          SizedBox(width: scaleConfig.scale(1)),
+          SizedBox(width: responsive.setWidth(1)),
           Icon(
             Icons.arrow_drop_down,
             color: Colors.white,
-            size: scaleConfig.scale(21),
+            size: responsive.setWidth(21),
           ),
         ],
       ),
       onSelected: onChanged,
       color: theme.appBarTheme.backgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      offset: Offset(0, scaleConfig.scale(40)),
-      itemBuilder: (context) => [
-        _buildMenuItem(
-          context,
-          value: 0,
-          icon: Icons.list,
-          label: 'List View'.tr, // Using translation
-          scaleConfig: scaleConfig,
-        ),
-        _buildMenuItem(
-          context,
-          value: 1,
-          icon: Icons.grid_view,
-          label: 'Grid View'.tr,
-          scaleConfig: scaleConfig,
-        ),
-        _buildMenuItem(
-          context,
-          value: 2,
-          icon: Icons.table_chart,
-          label: 'Table View'.tr,
-          scaleConfig: scaleConfig,
-        ),
-      ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      // UPDATED: Use setHeight for vertical offset
+      offset: Offset(0, responsive.setHeight(40)),
+      itemBuilder:
+          (context) => [
+            _buildMenuItem(
+              context,
+              value: 0,
+              icon: Icons.list,
+              label: 'List View'.tr,
+              // UPDATED: Pass the new responsive object
+              responsive: responsive,
+            ),
+            _buildMenuItem(
+              context,
+              value: 1,
+              icon: Icons.grid_view,
+              label: 'Grid View'.tr,
+              responsive: responsive,
+            ),
+            _buildMenuItem(
+              context,
+              value: 2,
+              icon: Icons.table_chart,
+              label: 'Table View'.tr,
+              responsive: responsive,
+            ),
+          ],
     );
   }
 
@@ -85,24 +89,29 @@ class ViewTypeSelector extends StatelessWidget {
     required int value,
     required IconData icon,
     required String label,
-    required ScaleConfig scaleConfig,
+    // UPDATED: The helper method now expects the ResponsiveUtil object
+    required ResponsiveUtil responsive,
   }) {
     return PopupMenuItem<int>(
       value: value,
-      height: scaleConfig.scale(40),
+      // UPDATED: Use setHeight for item height
+      height: responsive.setHeight(40),
       child: Row(
         children: [
           Icon(
             icon,
             color: Colors.white,
-            size: scaleConfig.scale(16),
+            // UPDATED: Use setWidth for icon size
+            size: responsive.setWidth(16),
           ),
-          SizedBox(width: scaleConfig.scale(10)),
+          // UPDATED: Use setWidth for horizontal spacing
+          SizedBox(width: responsive.setWidth(10)),
           Text(
             label,
             style: TextStyle(
               color: Colors.white,
-              fontSize: scaleConfig.scaleText(13),
+              // UPDATED: Use setSp for font size
+              fontSize: responsive.setSp(13),
             ),
           ),
         ],

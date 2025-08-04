@@ -1,13 +1,17 @@
+// lib/views/pages/graphscreen/card_chart.dart
+
+import 'package:budgify/views/pages/graphscreen/charts/bar_chart.dart';
 import 'package:budgify/views/pages/graphscreen/charts/line_chart.dart';
 import 'package:budgify/views/pages/graphscreen/charts/pie_chart.dart';
 import 'package:budgify/views/pages/graphscreen/charts/pie_chart_merge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'charts/bar_chart.dart';
-
 class ChartCard extends ConsumerWidget {
-  final int month; // Add a month parameter
+  // --- THE FIX: Receive both code for logic and symbol for display ---
+  final String currencyCode;
+  final String currencySymbol;
+  final int month;
   final int year;
   final int day;
   final bool isYear;
@@ -15,8 +19,11 @@ class ChartCard extends ConsumerWidget {
   final bool isDay;
   final int isIncome;
   final int chartType;
+
   const ChartCard({
     super.key,
+    required this.currencyCode,
+    required this.currencySymbol,
     required this.month,
     required this.year,
     required this.day,
@@ -25,18 +32,13 @@ class ChartCard extends ConsumerWidget {
     required this.isDay,
     required this.isIncome,
     required this.chartType,
-  }); // Update constructor
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Get the current month name
-    // String monthName = _getMonthName(month); // Use the passed month
-
     double cardWidth = MediaQuery.of(context).size.width * 0.89;
     double cardHeight = MediaQuery.of(context).size.height * 0.24;
-    print("chartz ==== ${chartType}");
-    print("chartzxxx ==== ${isIncome}");
-    
+
     return Center(
       child: Card(
         elevation: 5,
@@ -49,9 +51,11 @@ class ChartCard extends ConsumerWidget {
             children: [
               isIncome == 2
                   ? Expanded(
-                    child:
-                        chartType == 0
-                            ? IncomeExpensePieChart(
+                      child: chartType == 0
+                          ? IncomeExpensePieChart(
+                              // --- THE FIX: Pass code and symbol down ---
+                              currencyCode: currencyCode,
+                              currencySymbol: currencySymbol,
                               month: month,
                               year: year,
                               day: day,
@@ -59,55 +63,54 @@ class ChartCard extends ConsumerWidget {
                               isMonth: isMonth,
                               isDay: isDay,
                             )
-                            : Container(),
-                  )
+                          : Container(), // Other chart types for merged view can be added here
+                    )
                   : Expanded(
-                    child:
-                        chartType == 0
-                            ? SimplePieChart(
+                      child: chartType == 0
+                          ? SimplePieChart(
+                              // --- THE FIX: Pass code and symbol down ---
+                              currencyCode: currencyCode,
+                              currencySymbol: currencySymbol,
                               month: month,
                               year: year,
                               day: day,
                               isYear: isYear,
                               isMonth: isMonth,
                               isDay: isDay,
-                              isIncome: isIncome == 0 ? false : true,
+                              isIncome: isIncome != 0,
                             )
-                            : chartType == 1
-                            ? SimpleBarChart(
-                              month: month,
-                              year: year,
-                              day: day,
-                              isYear: isYear,
-                              isMonth: isMonth,
-                              isDay: isDay,
-                              isIncome: isIncome == 0 ? false : true,
-                            )
-                            : chartType == 2
-                            ? LineChartPage(
-                              month: month,
-                              year: year,
-                              day: day,
-                              isYear: isYear,
-                              isMonth: isMonth,
-                              isDay: isDay,
-                              isIncome: isIncome == 0 ? false : true,
-                            )
-                            : Container(),
-                  ),
+                          : chartType == 1
+                              ? SimpleBarChart(
+                                  // --- THE FIX: Pass code and symbol down ---
+                                  currencyCode: currencyCode,
+                                  currencySymbol: currencySymbol,
+                                  month: month,
+                                  year: year,
+                                  day: day,
+                                  isYear: isYear,
+                                  isMonth: isMonth,
+                                  isDay: isDay,
+                                  isIncome: isIncome != 0,
+                                )
+                              : chartType == 2
+                                  ? LineChartPage(
+                                      // --- THE FIX: Pass code and symbol down ---
+                                      currencyCode: currencyCode,
+                                      currencySymbol: currencySymbol,
+                                      month: month,
+                                      year: year,
+                                      day: day,
+                                      isYear: isYear,
+                                      isMonth: isMonth,
+                                      isDay: isDay,
+                                      isIncome: isIncome != 0,
+                                    )
+                                  : Container(),
+                    ),
             ],
           ),
         ),
       ),
     );
   }
-
-  // String _getMonthName(int month) {
-  //   const List<String> monthNames = [
-  //     'January', 'February', 'March', 'April',
-  //     'May', 'June', 'July', 'August',
-  //     'September', 'October', 'November', 'December'
-  //   ];
-  //   return monthNames[month - 1]; // Adjust for zero-based index
-  // }
 }

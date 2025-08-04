@@ -1,5 +1,7 @@
+// UPDATED: Import the necessary providers
 import 'package:budgify/core/themes/app_colors.dart';
 import 'package:budgify/core/utils/scale_config.dart';
+import 'package:budgify/viewmodels/providers/currency_symbol.dart';
 import 'package:budgify/viewmodels/providers/thousands_separator_provider.dart';
 import 'package:budgify/core/utils/parrot_animation_waiting.dart';
 import 'package:budgify/core/utils/format_amount.dart';
@@ -8,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import '../../domain/models/expense.dart';
 import '../../data/repo/expenses_repository.dart';
-// import 'package:intl/intl.dart'; // For number formatting
 
 class CalendarViewPage extends ConsumerWidget {
   final int month;
@@ -24,12 +25,15 @@ class CalendarViewPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scaleConfig = ScaleConfig(context);
+    final responsive = context.responsive;
     final repository = ExpensesRepository();
     final now = DateTime.now();
     final isCurrentMonth = (month == now.month && year == now.year);
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final separatorState = ref.watch(separatorProvider);
+
+    // THE FIX: Watch the currently selected display currency from the provider.
+    final displayCurrency = ref.watch(currencyProvider).displayCurrency;
 
     return Scaffold(
       appBar: AppBar(
@@ -37,38 +41,34 @@ class CalendarViewPage extends ConsumerWidget {
           'Calendar View - ${getShortMonthName(month)}'.tr,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: scaleConfig.scaleText(14),
+            fontSize: responsive.setSp(14),
+            fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        // actions: [
-        //   IconButton(
-        //     icon: Icon(Icons.format_list_numbered),
-        //     onPressed: () {
-        //       ref.read(separatorProvider.notifier).toggleSeparator(
-        //             !separatorState.isSeparatorEnabled,
-        //           );
-        //     },
-        //     tooltip: 'Toggle number separators',
-        //   ),
-        // ],
       ),
       body: StreamBuilder<List<CashFlow>>(
         stream: repository.getExpensesStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return ParrotAnimation();
+            return const ParrotAnimation();
           }
 
-          final expenses = (snapshot.data ?? [])
-              .where((expense) => showIncomes || !expense.isIncome)
-              .toList();
+          // THE FIX: Filter the expenses by the selected currency code.
+          final allExpenses = snapshot.data ?? [];
+          final filteredExpenses = allExpenses.where((expense) {
+            final isCorrectCurrency =
+                expense.currencyCode == displayCurrency.code;
+            final isCorrectType = showIncomes || !expense.isIncome;
+            return isCorrectCurrency && isCorrectType;
+          }).toList();
 
           final List<double> dailyIncomes = List.filled(daysInMonth, 0);
           final List<double> dailyExpenses = List.filled(daysInMonth, 0);
 
-          for (var expense in expenses) {
+          // Now loop through the correctly filtered expenses.
+          for (var expense in filteredExpenses) {
             if (expense.date.year == year && expense.date.month == month) {
               final day = expense.date.day - 1;
               if (expense.isIncome) {
@@ -80,13 +80,13 @@ class CalendarViewPage extends ConsumerWidget {
           }
 
           return Padding(
-            padding: EdgeInsets.all(scaleConfig.scale(10)),
+            padding: EdgeInsets.all(responsive.setWidth(10)),
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                crossAxisSpacing: scaleConfig.scale(6),
-                mainAxisSpacing: scaleConfig.scale(16),
-                childAspectRatio: scaleConfig.isTablet ? 1.0 : 0.8,
+                crossAxisSpacing: responsive.setWidth(6),
+                mainAxisSpacing: responsive.setHeight(16),
+                childAspectRatio: responsive.isTablet ? 1.0 : 0.8,
               ),
               itemCount: daysInMonth,
               itemBuilder: (context, index) {
@@ -102,7 +102,7 @@ class CalendarViewPage extends ConsumerWidget {
                     color: isCurrentDay
                         ? Colors.black
                         : Theme.of(context).appBarTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(scaleConfig.scale(8)),
+                    borderRadius: BorderRadius.circular(responsive.setWidth(8)),
                     boxShadow: [
                       BoxShadow(
                         color: savings == 0
@@ -110,49 +110,51 @@ class CalendarViewPage extends ConsumerWidget {
                             : (savings > 0
                                 ? AppColors.accentColor
                                 : AppColors.accentColor2),
-                        blurRadius: scaleConfig.scale(3),
+                        blurRadius: responsive.setWidth(3),
                         offset: Offset(
-                          scaleConfig.scale(3),
-                          scaleConfig.scale(3),
+                          responsive.setWidth(3),
+                          responsive.setHeight(3),
                         ),
                       ),
                     ],
                   ),
-                  padding: EdgeInsets.all(scaleConfig.scale(6)),
+                  padding: EdgeInsets.all(responsive.setWidth(6)),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         '$day',
                         style: TextStyle(
-                          fontSize: scaleConfig.scaleText(7),
+                          fontSize: responsive.setSp(7),
                           fontWeight: FontWeight.bold,
                           color: isCurrentDay
                               ? Colors.white
-                              : Theme.of(context).textTheme.bodyLarge?.color,
+                              : Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
                         ),
                       ),
                       if (showIncomes) ...[
-                        SizedBox(height: scaleConfig.scale(2)),
+                        SizedBox(height: responsive.setHeight(2)),
                         _buildRow(
                           context,
-                          Icons.arrow_upward, 
-                          income, 
+                          Icons.arrow_upward,
+                          income,
                           Colors.green,
-                          scaleConfig,
+                          responsive,
                           separatorState.isSeparatorEnabled,
-                          ref
+                          ref,
                         ),
                       ],
-                      SizedBox(height: scaleConfig.scale(1)),
+                      SizedBox(height: responsive.setHeight(1)),
                       _buildRow(
                         context,
-                        Icons.arrow_downward, 
-                        expense, 
+                        Icons.arrow_downward,
+                        expense,
                         Colors.red,
-                        scaleConfig,
+                        responsive,
                         separatorState.isSeparatorEnabled,
-                        ref
+                        ref,
                       ),
                     ],
                   ),
@@ -167,17 +169,13 @@ class CalendarViewPage extends ConsumerWidget {
 
   Widget _buildRow(
     BuildContext context,
-    IconData icon, 
-    double amount, 
+    IconData icon,
+    double amount,
     Color color,
-    ScaleConfig scaleConfig,
+    ResponsiveUtil responsive,
     bool useSeparator,
-    WidgetRef ref
+    WidgetRef ref,
   ) {
-    // final formattedAmount = useSeparator
-    //     ? NumberFormat.decimalPattern().format(amount)
-    //     : amount.toStringAsFixed(0);
-
     return Flexible(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -185,10 +183,7 @@ class CalendarViewPage extends ConsumerWidget {
           Expanded(
             child: Text(
               getFormattedAmount(amount, ref),
-              style: TextStyle(
-                fontSize: scaleConfig.scaleText(6), 
-                color: color,
-              ),
+              style: TextStyle(fontSize: responsive.setSp(6), color: color),
               softWrap: false,
               maxLines: 1,
               overflow: TextOverflow.visible,
@@ -201,14 +196,22 @@ class CalendarViewPage extends ConsumerWidget {
 
   String getShortMonthName(int monthNumber) {
     const List<String> monthNames = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
-
     if (monthNumber < 1 || monthNumber > 12) {
       throw ArgumentError("Month number must be between 1 and 12");
     }
-
     return monthNames[monthNumber - 1];
   }
 }

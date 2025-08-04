@@ -1,5 +1,11 @@
+// lib/views/pages/graphscreen/charts_screen.dart
+
+import 'package:budgify/core/constants/currencies.dart';
 import 'package:budgify/core/themes/app_colors.dart';
+import 'package:budgify/domain/models/currency.dart';
+import 'package:budgify/viewmodels/providers/currency_symbol.dart';
 import 'package:budgify/viewmodels/providers/lang_provider.dart';
+import 'package:budgify/viewmodels/providers/wallet_provider.dart';
 import 'package:budgify/views/pages/celender_screen.dart';
 import 'package:budgify/viewmodels/providers/switchOnOffIncome.dart';
 import 'package:budgify/views/pages/graphscreen/card_chart.dart';
@@ -12,6 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 
+// Your ScaleConfig and ThemeContext extensions are fine, no changes needed.
+// I will include them here for completeness of the file.
 extension ThemeContext on BuildContext {
   ThemeData get appTheme => Theme.of(this);
   TextTheme get appTextTheme => Theme.of(this).textTheme;
@@ -145,7 +153,6 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
   bool showMonthTabs = true;
   bool showDayTabs = true;
 
-  bool isIncome = false;
   int chartType = 0;
   int incomeType = 0;
 
@@ -162,7 +169,7 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
     _yearTabController = TabController(
       length: 6,
       vsync: this,
-      initialIndex: selectedYear - 2022,
+      initialIndex: (selectedYear - 2022).clamp(0, 5),
     );
     _dayTabController = TabController(
       length: getDaysInMonth(selectedMonth, selectedYear),
@@ -170,50 +177,52 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
       initialIndex: selectedDay - 1,
     );
 
-    _monthTabController.addListener(() {
-      if (_monthTabController.indexIsChanging) {
-        setState(() {
-          selectedMonth = _monthTabController.index + 1;
-          selectedDay = 1;
-          updateDayTabController();
-        });
-      }
-    });
+    _monthTabController.addListener(_monthTabListener);
+    _yearTabController.addListener(_yearTabListener);
+    _dayTabController.addListener(_dayTabListener);
+  }
 
-    _yearTabController.addListener(() {
-      if (_yearTabController.indexIsChanging) {
-        setState(() {
-          selectedYear = 2022 + _yearTabController.index;
-          selectedDay = 1;
-          updateDayTabController();
-        });
-      }
-    });
+  void _monthTabListener() {
+    if (_monthTabController.indexIsChanging) {
+      setState(() {
+        selectedMonth = _monthTabController.index + 1;
+        selectedDay = 1;
+        updateDayTabController();
+      });
+    }
+  }
 
-    _dayTabController.addListener(() {
-      if (_dayTabController.indexIsChanging) {
-        setState(() {
-          selectedDay = _dayTabController.index + 1;
-        });
-      }
-    });
+  void _yearTabListener() {
+    if (_yearTabController.indexIsChanging) {
+      setState(() {
+        selectedYear = 2022 + _yearTabController.index;
+        selectedDay = 1;
+        updateDayTabController();
+      });
+    }
+  }
+
+  void _dayTabListener() {
+    if (_dayTabController.indexIsChanging) {
+      setState(() {
+        selectedDay = _dayTabController.index + 1;
+      });
+    }
   }
 
   void updateDayTabController() {
     if (showDayTabs) {
+      final newDayCount = getDaysInMonth(selectedMonth, selectedYear);
+      final newIndex = (selectedDay - 1).clamp(0, newDayCount - 1);
+
+      _dayTabController.removeListener(_dayTabListener);
       _dayTabController.dispose();
       _dayTabController = TabController(
-        length: getDaysInMonth(selectedMonth, selectedYear),
+        length: newDayCount,
         vsync: this,
+        initialIndex: newIndex,
       );
-      _dayTabController.index = selectedDay - 1;
-      _dayTabController.addListener(() {
-        if (_dayTabController.indexIsChanging) {
-          setState(() {
-            selectedDay = _dayTabController.index + 1;
-          });
-        }
-      });
+      _dayTabController.addListener(_dayTabListener);
     }
   }
 
@@ -236,6 +245,7 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
   }
 
   void _updateCheckboxState({bool? year, bool? month, bool? day}) {
+    Navigator.of(context).pop();
     setState(() {
       if (year != null) showYearTabs = year;
       if (month != null) {
@@ -251,93 +261,13 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
         chartType = 0;
       }
     });
-
-    Navigator.of(context).pop();
-    Future.delayed(Duration.zero, () {
-      final RenderBox? renderBox =
-          _filterIconKey.currentContext?.findRenderObject() as RenderBox?;
-      final Offset? iconPosition = renderBox?.localToGlobal(Offset.zero);
-      final Size? iconSize = renderBox?.size;
-
-      if (iconPosition == null || iconSize == null) {
-        return;
-      }
-
-      final scaleConfig = context.scaleConfig;
-      final menuLeft =
-          iconPosition.dx +
-          iconSize.width -
-          scaleConfig.scale(150);
-      final menuTop = iconPosition.dy + iconSize.height;
-      final menuRight = context.scaleConfig.screenWidth - iconPosition.dx;
-      final menuBottom =
-          context.scaleConfig.screenHeight - iconPosition.dy - iconSize.height;
-
-      showMenu(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        context: context,
-        position: RelativeRect.fromLTRB(
-          menuLeft,
-          menuTop,
-          menuRight,
-          menuBottom,
-        ),
-        items: [
-          PopupMenuItem(
-            child: CheckboxListTile(
-              checkColor: AppColors.textColorDarkTheme,
-              activeColor: AppColors.accentColor2,
-              title: Text(
-                "Show Year".tr,
-                style: TextStyle(
-                  fontSize: context.scaleConfig.scaleText(10),
-                  color: AppColors.textColorDarkTheme,
-                ),
-              ),
-              value: showYearTabs,
-              onChanged: (value) => _updateCheckboxState(year: value),
-            ),
-          ),
-          PopupMenuItem(
-            child: CheckboxListTile(
-              checkColor: AppColors.textColorDarkTheme,
-              activeColor: AppColors.accentColor2,
-              title: Text(
-                "Show Month".tr,
-                style: TextStyle(
-                  fontSize: context.scaleConfig.scaleText(10),
-                  color: AppColors.textColorDarkTheme,
-                ),
-              ),
-              value: showMonthTabs,
-              onChanged: (value) => _updateCheckboxState(month: value),
-            ),
-          ),
-          PopupMenuItem(
-            child: CheckboxListTile(
-              checkColor: AppColors.textColorDarkTheme,
-              activeColor: AppColors.accentColor2,
-              title: Text(
-                "Show Day".tr,
-                style: TextStyle(
-                  fontSize: context.scaleConfig.scaleText(10),
-                  color: AppColors.textColorDarkTheme,
-                ),
-              ),
-              value: showDayTabs,
-              onChanged:
-                  showMonthTabs
-                      ? (value) => _updateCheckboxState(day: value)
-                      : null,
-            ),
-          ),
-        ],
-      );
-    });
   }
 
   @override
   void dispose() {
+    _monthTabController.removeListener(_monthTabListener);
+    _yearTabController.removeListener(_yearTabListener);
+    _dayTabController.removeListener(_dayTabListener);
     _monthTabController.dispose();
     _dayTabController.dispose();
     _yearTabController.dispose();
@@ -346,14 +276,106 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final scaleConfig = context.scaleConfig;
+    final scaleConfig = ScaleConfig(context);
     final cardColor = Theme.of(context).scaffoldBackgroundColor;
     final switchState = ref.watch(switchProvider).isSwitched;
     bool isArabic =
         ref.watch(languageProvider).toString() == 'ar' ? true : false;
 
+    // --- Get all necessary currency information ---
+    final allWallets = ref.watch(walletProvider);
+    final currentDisplayCurrency = ref.watch(currencyProvider).displayCurrency;
+
+    // Get unique currency codes from wallets
+    final usedCurrencyCodes = allWallets.map((w) => w.currencyCode).toSet();
+
+    // Find the full Currency objects for the used codes
+    final usedCurrencies = usedCurrencyCodes
+        .map((code) => availableCurrencies.firstWhere((c) => c.code == code,
+            orElse: () => currentDisplayCurrency))
+        .toList();
+
+    // Determine the current value for the dropdown
+    final String? dropdownValue =
+        usedCurrencyCodes.contains(currentDisplayCurrency.code)
+            ? currentDisplayCurrency.code
+            : (usedCurrencyCodes.isNotEmpty ? usedCurrencyCodes.first : null);
+
     return Scaffold(
       appBar: AppBar(
+        // --- UPDATED SECTION START ---
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (usedCurrencies.length > 1 && dropdownValue != null)
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: dropdownValue,
+                    // This creates a tiny, almost invisible arrow for better UX
+                    icon: Icon(Icons.keyboard_arrow_down,
+                        color: Theme.of(context).appBarTheme.backgroundColor,
+                        size: scaleConfig.scaleText(2)),
+                    dropdownColor: Theme.of(context).cardTheme.color,
+                    // This builder defines how the selected item looks on the AppBar
+                    selectedItemBuilder: (context) {
+                      return usedCurrencies.map<Widget>((currency) {
+                        return Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: scaleConfig.scale(4)),
+                            child: Text(
+                              currency.symbol, // Show only the symbol
+                              style: TextStyle(
+                                  color:
+                                      AppColors.dividerColor, // Consistent color
+                                  fontSize: scaleConfig.scaleText(18),
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        );
+                      }).toList();
+                    },
+                    // This builder defines how the items look inside the dropdown list
+                    items: usedCurrencies.map((currency) {
+                      return DropdownMenuItem<String>(
+                        value: currency.code,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${currency.symbol} ', // Symbol with space
+                              style: TextStyle(
+                                  color: AppColors.accentColor,
+                                  fontSize: scaleConfig.scaleText(15),
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              currency.code, // Clean currency code
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: scaleConfig.scaleText(13),
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (newCode) {
+                      if (newCode != null) {
+                        ref
+                            .read(currencyProvider.notifier)
+                            .changeDisplayCurrency(newCode);
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // --- UPDATED SECTION END ---
+        leadingWidth: 100,
         title: Text(
           "Charts Page".tr,
           style: TextStyle(
@@ -366,188 +388,104 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
           if (switchState)
             Padding(
               padding: EdgeInsets.all(scaleConfig.scale(5.0)),
-              child: SizedBox(
-                child: DropdownButton<int>(
-                  underline: SizedBox(),
-                  value: incomeType,
-                  dropdownColor: cardColor,
-                  icon: Icon(
-                    Icons.stacked_line_chart_outlined,
+              child: DropdownButton<int>(
+                underline: const SizedBox(),
+                value: incomeType,
+                dropdownColor: cardColor,
+                icon: Icon(Icons.stacked_line_chart_outlined,
                     color: AppColors.textColorDarkTheme,
-                    size: scaleConfig.scale(20),
-                  ),
-                  items: [
-                    DropdownMenuItem<int>(
+                    size: scaleConfig.scale(20)),
+                items: [
+                  DropdownMenuItem<int>(
                       value: 0,
-                      child: Icon(
-                        Icons.trending_down,
-                        color:
-                            incomeType == 0
-                                ? AppColors.accentColor
-                                : Colors.white,
-                        size: scaleConfig.scale(18),
-                      ),
-                    ),
-                    DropdownMenuItem<int>(
+                      child: Icon(Icons.trending_down,
+                          color: incomeType == 0
+                              ? AppColors.accentColor
+                              : Colors.white,
+                          size: scaleConfig.scale(18))),
+                  DropdownMenuItem<int>(
                       value: 1,
-                      child: Icon(
-                        Icons.trending_up,
-                        color:
-                            incomeType == 1
-                                ? AppColors.accentColor
-                                : Colors.white,
-                        size: scaleConfig.scale(18),
-                      ),
-                    ),
-                    DropdownMenuItem<int>(
+                      child: Icon(Icons.trending_up,
+                          color: incomeType == 1
+                              ? AppColors.accentColor
+                              : Colors.white,
+                          size: scaleConfig.scale(18))),
+                  DropdownMenuItem<int>(
                       value: 2,
-                      child: Icon(
-                        Icons.multiline_chart,
-                        color:
-                            incomeType == 2
-                                ? AppColors.accentColor
-                                : Colors.white,
-                        size: scaleConfig.scale(18),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      incomeType = value ?? 0;
-                    });
-                  },
-                  selectedItemBuilder:
-                      (BuildContext context) => const [
-                        SizedBox(),
-                        SizedBox(),
-                        SizedBox(),
-                      ],
-                ),
+                      child: Icon(Icons.multiline_chart,
+                          color: incomeType == 2
+                              ? AppColors.accentColor
+                              : Colors.white,
+                          size: scaleConfig.scale(18))),
+                ],
+                onChanged: (value) => setState(() => incomeType = value ?? 0),
+                selectedItemBuilder: (context) =>
+                    const [SizedBox(), SizedBox(), SizedBox()],
               ),
             ),
           Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: scaleConfig.scale(5),
-              vertical: scaleConfig.scale(5),
-            ),
-            child: SizedBox(
-              child: DropdownButton<int>(
-                underline: SizedBox(),
-                value: chartType,
-                dropdownColor: cardColor,
-                icon: Icon(
-                  Icons.analytics_outlined,
+                horizontal: scaleConfig.scale(5),
+                vertical: scaleConfig.scale(5)),
+            child: DropdownButton<int>(
+              underline: const SizedBox(),
+              value: chartType,
+              dropdownColor: cardColor,
+              icon: Icon(Icons.analytics_outlined,
                   color: AppColors.textColorDarkTheme,
-                  size: scaleConfig.scale(20),
-                ),
-                items: [
-                  DropdownMenuItem<int>(
+                  size: scaleConfig.scale(20)),
+              items: [
+                DropdownMenuItem<int>(
                     value: 0,
-                    child: Icon(
-                      Icons.donut_large_outlined,
-                      color:
-                          chartType == 0 ? AppColors.accentColor : Colors.white,
-                      size: scaleConfig.scale(18),
-                    ),
-                  ),
-                  DropdownMenuItem<int>(
+                    child: Icon(Icons.donut_large_outlined,
+                        color: chartType == 0
+                            ? AppColors.accentColor
+                            : Colors.white,
+                        size: scaleConfig.scale(18))),
+                DropdownMenuItem<int>(
                     value: 1,
-                    child: Icon(
-                      Icons.bar_chart_outlined,
-                      color:
-                          chartType == 1 ? AppColors.accentColor : Colors.white,
-                      size: scaleConfig.scale(18),
-                    ),
-                  ),
-                  if (!showDayTabs)
-                    DropdownMenuItem<int>(
+                    child: Icon(Icons.bar_chart_outlined,
+                        color: chartType == 1
+                            ? AppColors.accentColor
+                            : Colors.white,
+                        size: scaleConfig.scale(18))),
+                if (!showDayTabs)
+                  DropdownMenuItem<int>(
                       value: 2,
-                      child: Icon(
-                        Icons.ssid_chart_outlined,
-                        color:
-                            chartType == 2
-                                ? AppColors.accentColor
-                                : Colors.white,
-                        size: scaleConfig.scale(18),
-                      ),
-                    ),
-                ],
-                onChanged: (value) {
-                  print("chartzxz == ${value}");
-                  setState(() {
-                    chartType = value!;
-                  });
-                },
-                selectedItemBuilder:
-                    (BuildContext context) => const [
-                      SizedBox(),
-                      SizedBox(),
-                      SizedBox(),
-                    ],
-              ),
+                      child: Icon(Icons.ssid_chart_outlined,
+                          color: chartType == 2
+                              ? AppColors.accentColor
+                              : Colors.white,
+                          size: scaleConfig.scale(18))),
+              ],
+              onChanged: (value) => setState(() => chartType = value!),
+              selectedItemBuilder: (context) =>
+                  const [SizedBox(), SizedBox(), SizedBox()],
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              right: scaleConfig.scale(0),
-              left: scaleConfig.scale(0),
-            ),
-            child: IconButton(
-              key: _filterIconKey,
-              icon: Icon(
-                Icons.filter_list,
+          IconButton(
+            key: _filterIconKey,
+            icon: Icon(Icons.filter_list,
                 size: scaleConfig.scale(20),
-                color: AppColors.textColorDarkTheme,
-              ),
-              onPressed: () {
-                final RenderBox? renderBox =
-                    _filterIconKey.currentContext?.findRenderObject()
-                        as RenderBox?;
-                final Offset? iconPosition = renderBox?.localToGlobal(
-                  Offset.zero,
-                );
-                final Size? iconSize = renderBox?.size;
-
-                if (iconPosition == null || iconSize == null) {
-                  showMenu(
-                    color: cardColor,
-                    context: context,
-                    position: RelativeRect.fromLTRB(
-                      scaleConfig.scale(100),
-                      scaleConfig.scale(80),
-                      scaleConfig.scale(100),
-                      scaleConfig.scale(100),
-                    ),
-                    items: _buildMenuItems(context),
-                  );
-                  return;
-                }
-
-                final menuLeft =
-                    iconPosition.dx +
-                    iconSize.width -
-                    scaleConfig.scale(150);
-                final menuTop = iconPosition.dy + iconSize.height;
-                final menuRight =
-                    context.scaleConfig.screenWidth - iconPosition.dx;
-                final menuBottom =
-                    context.scaleConfig.screenHeight -
-                    iconPosition.dy -
-                    iconSize.height;
-
+                color: AppColors.textColorDarkTheme),
+            onPressed: () {
+              final RenderBox? renderBox = _filterIconKey.currentContext
+                  ?.findRenderObject() as RenderBox?;
+              if (renderBox != null) {
+                final iconPosition = renderBox.localToGlobal(Offset.zero);
+                final iconSize = renderBox.size;
                 showMenu(
                   color: cardColor,
                   context: context,
                   position: RelativeRect.fromLTRB(
-                    menuLeft,
-                    menuTop,
-                    menuRight,
-                    menuBottom,
-                  ),
+                      iconPosition.dx - 150,
+                      iconPosition.dy + iconSize.height,
+                      context.size!.width - iconPosition.dx,
+                      context.size!.height - iconPosition.dy),
                   items: _buildMenuItems(context),
                 );
-              },
-            ),
+              }
+            },
           ),
         ],
         bottom: PreferredSize(
@@ -561,11 +499,9 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
                   isScrollable: true,
                   indicatorColor: AppColors.accentColor,
                   controller: _yearTabController,
-                  labelStyle: TextStyle(fontSize: scaleConfig.scaleText(10)),
-                  tabs: List.generate(6, (index) {
-                    final year = 2022 + index;
-                    return Tab(text: year.toString());
-                  }),
+                  labelStyle: TextStyle(fontSize: scaleConfig.scaleText(11)),
+                  tabs: List.generate(
+                      6, (index) => Tab(text: (2022 + index).toString())),
                 ),
               if (showMonthTabs)
                 TabBar(
@@ -574,7 +510,7 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
                   isScrollable: true,
                   indicatorColor: AppColors.accentColor,
                   controller: _monthTabController,
-                  labelStyle: TextStyle(fontSize: scaleConfig.scaleText(10)),
+                  labelStyle: TextStyle(fontSize: scaleConfig.scaleText(11)),
                   tabs: [
                     Tab(text: "Jan".tr),
                     Tab(text: "Feb".tr),
@@ -597,22 +533,21 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
                   isScrollable: true,
                   indicatorColor: AppColors.accentColor,
                   controller: _dayTabController,
-                  labelStyle: TextStyle(fontSize: scaleConfig.scaleText(10)),
+                  labelStyle: TextStyle(fontSize: scaleConfig.scaleText(11)),
                   tabs: List.generate(
-                    getDaysInMonth(selectedMonth, selectedYear),
-                    (index) => Tab(
-                      text:
-                          isArabic
+                      getDaysInMonth(selectedMonth, selectedYear),
+                      (index) => Tab(
+                          text: isArabic
                               ? _convertToArabicNumerals((index + 1).toString())
-                              : (index + 1).toString(),
-                    ),
-                  ),
+                              : (index + 1).toString())),
                 ),
             ],
           ),
         ),
       ),
       body: MonthView(
+        currencyCode: currentDisplayCurrency.code,
+        currencySymbol: currentDisplayCurrency.symbol,
         month: selectedMonth,
         year: selectedYear,
         day: selectedDay,
@@ -632,13 +567,10 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
         child: CheckboxListTile(
           checkColor: AppColors.textColorDarkTheme,
           activeColor: AppColors.accentColor2,
-          title: Text(
-            "Show Year".tr,
-            style: TextStyle(
-              fontSize: context.scaleConfig.scaleText(10),
-              color: AppColors.textColorDarkTheme,
-            ),
-          ),
+          title: Text("Show Year".tr,
+              style: TextStyle(
+                  fontSize: context.scaleConfig.scaleText(10),
+                  color: AppColors.textColorDarkTheme)),
           value: showYearTabs,
           onChanged: (value) => _updateCheckboxState(year: value),
         ),
@@ -647,13 +579,10 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
         child: CheckboxListTile(
           checkColor: AppColors.textColorDarkTheme,
           activeColor: AppColors.accentColor2,
-          title: Text(
-            "Show Month".tr,
-            style: TextStyle(
-              fontSize: context.scaleConfig.scaleText(10),
-              color: AppColors.textColorDarkTheme,
-            ),
-          ),
+          title: Text("Show Month".tr,
+              style: TextStyle(
+                  fontSize: context.scaleConfig.scaleText(10),
+                  color: AppColors.textColorDarkTheme)),
           value: showMonthTabs,
           onChanged: (value) => _updateCheckboxState(month: value),
         ),
@@ -662,58 +591,40 @@ class _ChartsScreenState extends ConsumerState<ChartsScreen>
         child: CheckboxListTile(
           checkColor: AppColors.textColorDarkTheme,
           activeColor: AppColors.accentColor2,
-          title: Text(
-            "Show Day".tr,
-            style: TextStyle(
-              fontSize: context.scaleConfig.scaleText(10),
-              color: AppColors.textColorDarkTheme,
-            ),
-          ),
+          title: Text("Show Day".tr,
+              style: TextStyle(
+                  fontSize: context.scaleConfig.scaleText(10),
+                  color: AppColors.textColorDarkTheme)),
           value: showDayTabs,
-          onChanged:
-              showMonthTabs
-                  ? (value) => _updateCheckboxState(day: value)
-                  : null,
+          onChanged: showMonthTabs
+              ? (value) => _updateCheckboxState(day: value)
+              : null,
         ),
       ),
     ];
   }
 
-  int getDaysInMonth(int month, int year) {
-    return DateTime(year, month + 1, 0).day;
-  }
-
+  int getDaysInMonth(int month, int year) => DateTime(year, month + 1, 0).day;
   String _convertToArabicNumerals(String number) {
-    return number.replaceAllMapped(RegExp(r'[0-9]'), (match) {
-      switch (match.group(0)) {
-        case '0':
-          return '٠';
-        case '1':
-          return '١';
-        case '2':
-          return '٢';
-        case '3':
-          return '٣';
-        case '4':
-          return '٤';
-        case '5':
-          return '٥';
-        case '6':
-          return '٦';
-        case '7':
-          return '٧';
-        case '8':
-          return '٨';
-        case '9':
-          return '٩';
-        default:
-          return match.group(0)!;
-      }
-    });
+    const Map<String, String> numerals = {
+      '0': '٠',
+      '1': '١',
+      '2': '٢',
+      '3': '٣',
+      '4': '٤',
+      '5': '٥',
+      '6': '٦',
+      '7': '٧',
+      '8': '٨',
+      '9': '٩'
+    };
+    return number.split('').map((char) => numerals[char] ?? char).join();
   }
 }
 
-class MonthView extends StatelessWidget {
+class MonthView extends ConsumerWidget {
+  final String currencyCode;
+  final String currencySymbol;
   final int month;
   final int year;
   final int day;
@@ -726,6 +637,8 @@ class MonthView extends StatelessWidget {
 
   const MonthView({
     super.key,
+    required this.currencyCode,
+    required this.currencySymbol,
     required this.month,
     required this.year,
     required this.day,
@@ -738,8 +651,11 @@ class MonthView extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final scaleConfig = context.scaleConfig;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scaleConfig = ScaleConfig(context);
+
+    // --- THE FIX: Get the current display currency here to pass to report pages ---
+    final currentDisplayCurrency = ref.watch(currencyProvider).displayCurrency;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,6 +665,8 @@ class MonthView extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: scaleConfig.scale(21.5)),
           child: Center(
             child: ChartCard(
+              currencyCode: currencyCode,
+              currencySymbol: currencySymbol,
               month: month,
               year: year,
               day: day,
@@ -767,81 +685,63 @@ class MonthView extends StatelessWidget {
             children: [
               SizedBox(
                 width: scaleConfig.isTablet
-                    ? scaleConfig.widthPercentage(0.42) // 42% for tablets
-                    : scaleConfig.scale(170), // Slightly wider for phones
+                    ? scaleConfig.widthPercentage(0.42)
+                    : scaleConfig.scale(170),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         Theme.of(context).appBarTheme.backgroundColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        scaleConfig.scale(12),
-                      ),
-                    ),
+                        borderRadius:
+                            BorderRadius.circular(scaleConfig.scale(12))),
                     padding: EdgeInsets.symmetric(
-                      vertical: scaleConfig.scale(12),
-                      horizontal: scaleConfig.scale(16),
-                    ),
+                        vertical: scaleConfig.scale(12),
+                        horizontal: scaleConfig.scale(16)),
                   ),
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder:
-                            (context) => CalendarViewPage(
+                          builder: (context) => CalendarViewPage(
                               month: month,
                               year: year,
-                              showIncomes: isIncome == 0 ? false : true,
-                            ),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'Calendar View'.tr,
-                    style: TextStyle(
-                      color: AppColors.textColorDarkTheme,
-                      fontSize: scaleConfig.tabletScaleText(12), // Larger text for tablets
-                    ),
-                  ),
+                              showIncomes: isIncome != 0))),
+                  child: Text('Calendar View'.tr,
+                      style: TextStyle(
+                          color: AppColors.textColorDarkTheme,
+                          fontSize: scaleConfig.tabletScaleText(12))),
                 ),
               ),
               if (showIncomeThings) SizedBox(width: scaleConfig.scale(10)),
               if (showIncomeThings)
                 SizedBox(
                   width: scaleConfig.isTablet
-                      ? scaleConfig.widthPercentage(0.42) // 42% for tablets
-                      : scaleConfig.scale(170), // Slightly wider for phones
+                      ? scaleConfig.widthPercentage(0.42)
+                      : scaleConfig.scale(170),
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           Theme.of(context).appBarTheme.backgroundColor,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          scaleConfig.scale(12),
-                        ),
-                      ),
+                          borderRadius:
+                              BorderRadius.circular(scaleConfig.scale(12))),
                       padding: EdgeInsets.symmetric(
-                        vertical: scaleConfig.scale(12),
-                        horizontal: scaleConfig.scale(16),
-                      ),
+                          vertical: scaleConfig.scale(12),
+                          horizontal: scaleConfig.scale(16)),
                     ),
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  MonthlyTablePage(month: month, year: year),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      'Report Table'.tr,
-                      style: TextStyle(
-                        color: AppColors.textColorDarkTheme,
-                        fontSize: scaleConfig.tabletScaleText(12), // Larger text for tablets
-                      ),
-                    ),
+                            builder: (context) => MonthlyTablePage(
+                                  // --- THE FIX: Pass currency info ---
+                                  currencyCode: currentDisplayCurrency.code,
+                                  currencySymbol: currentDisplayCurrency.symbol,
+                                  month: month,
+                                  year: year,
+                                ))),
+                    child: Text('Report Table'.tr,
+                        style: TextStyle(
+                            color: AppColors.textColorDarkTheme,
+                            fontSize: scaleConfig.tabletScaleText(12))),
                   ),
                 ),
             ],
@@ -853,51 +753,50 @@ class MonthView extends StatelessWidget {
               if (showIncomeThings)
                 SizedBox(
                   width: scaleConfig.isTablet
-                      ? scaleConfig.widthPercentage(0.9) // 90% for tablets
-                      : scaleConfig.scale(340), // Slightly wider for phones
+                      ? scaleConfig.widthPercentage(0.9)
+                      : scaleConfig.scale(340),
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           Theme.of(context).appBarTheme.backgroundColor,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          scaleConfig.scale(12),
-                        ),
-                      ),
+                          borderRadius:
+                              BorderRadius.circular(scaleConfig.scale(12))),
                       padding: EdgeInsets.symmetric(
-                        vertical: scaleConfig.scale(12),
-                        horizontal: scaleConfig.scale(16),
-                      ),
+                          vertical: scaleConfig.scale(12),
+                          horizontal: scaleConfig.scale(16)),
                     ),
                     onPressed: () {
                       if (isYear && !isMonth && !isDay) {
                         Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => YearlyTablePage(year: year),
-                          ),
-                        );
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => YearlyTablePage(
+                                      // --- THE FIX: Pass currency info ---
+                                      currencyCode: currentDisplayCurrency.code,
+                                      currencySymbol:
+                                          currentDisplayCurrency.symbol,
+                                      year: year,
+                                    )));
                       } else if (isDay) {
                         Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => DayReportPage(
-                                  month: month,
-                                  year: year,
-                                  day: day,
-                                ),
-                          ),
-                        );
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => DayReportPage(
+                                      // --- THE FIX: Pass currency info ---
+                                      currencyCode: currentDisplayCurrency.code,
+                                      currencySymbol:
+                                          currentDisplayCurrency.symbol,
+                                      month: month,
+                                      year: year,
+                                      day: day,
+                                    )));
                       }
                     },
-                    child: Text(
-                      'Detailed Report Table'.tr,
-                      style: TextStyle(
-                        color: AppColors.textColorDarkTheme,
-                        fontSize: scaleConfig.tabletScaleText(12), // Larger text for tablets
-                      ),
-                    ),
+                    child: Text('Detailed Report Table'.tr,
+                        style: TextStyle(
+                            color: AppColors.textColorDarkTheme,
+                            fontSize: scaleConfig.tabletScaleText(12))),
                   ),
                 ),
             ],
@@ -905,26 +804,28 @@ class MonthView extends StatelessWidget {
         SizedBox(height: scaleConfig.scale(10)),
         isIncome == 2
             ? Expanded(
-              child: IncomeExpenseCategoryList(
-                month: month,
-                year: year,
-                day: day,
-                isYear: isYear,
-                isMonth: isMonth,
-                isDay: isDay,
-              ),
-            )
+                child: IncomeExpenseCategoryList(
+                  currencyCode: currencyCode,
+                  month: month,
+                  year: year,
+                  day: day,
+                  isYear: isYear,
+                  isMonth: isMonth,
+                  isDay: isDay,
+                ),
+              )
             : Expanded(
-              child: CategoryList(
-                month: month,
-                year: year,
-                day: day,
-                isYear: isYear,
-                isMonth: isMonth,
-                isDay: isDay,
-                isIncome: isIncome == 0 ? false : true,
+                child: CategoryList(
+                  currencyCode: currencyCode,
+                  month: month,
+                  year: year,
+                  day: day,
+                  isYear: isYear,
+                  isMonth: isMonth,
+                  isDay: isDay,
+                  isIncome: isIncome != 0,
+                ),
               ),
-            ),
       ],
     );
   }

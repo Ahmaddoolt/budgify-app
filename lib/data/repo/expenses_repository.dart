@@ -1,4 +1,3 @@
-// lib/data/services/local_database_services.dart/expenses_repository.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../../domain/models/category.dart';
@@ -82,7 +81,23 @@ class ExpensesRepository {
     }
   }
 
-  // Add this method to your ExpensesRepository class
+  // --- NEW METHOD ---
+  /// Finds and deletes all cash flow records associated with a specific wallet ID.
+  /// This is called by the CashFlowNotifier when a user chooses to delete a wallet and its transactions.
+  Future<void> deleteCashFlowsByWallet(String walletId) async {
+    // Find all the Hive keys for cash flows where the wallet ID matches.
+    final keysToDelete = _box.keys.where((key) {
+      final cashFlow = _box.get(key);
+      // Check if cashFlow is not null and if its wallet's ID matches.
+      return cashFlow?.walletType.id == walletId;
+    }).toList(); // Collect keys into a new list to avoid modification during iteration issues.
+
+    // Delete all the found cash flows using their keys.
+    for (final key in keysToDelete) {
+      await _box.delete(key);
+    }
+  }
+
   Future<void> transferAmount({
     required Wallet fromWallet,
     required Wallet toWallet,
@@ -101,38 +116,41 @@ class ExpensesRepository {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: "Transfer to ${toWallet.name}",
       amount: amount,
+      currencySymbol: fromWallet.currencySymbol,
       date: date,
       category: Category(
         id: '20',
         name: 'Transfer',
-        iconKey: 'sync_alt', // Updated to use iconKey
+        iconKey: 'sync_alt',
         color: const Color(0xff1E90FF),
         isNew: false,
         type: CategoryType.expense,
       ),
       isIncome: false,
       walletType: fromWallet,
+      currencyCode: fromWallet.currencyCode,
     );
 
     // Add to destination wallet
     final inflow = CashFlow(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
       title: "Received from ${fromWallet.name}",
       amount: amount,
+      currencySymbol: toWallet.currencySymbol,
       date: date,
       category: Category(
         id: '21',
         name: 'Transfer In',
-        iconKey: 'move_to_inbox', // Updated to use iconKey
+        iconKey: 'move_to_inbox',
         color: const Color(0xff228B22),
         isNew: false,
         type: CategoryType.income,
       ),
       isIncome: true,
       walletType: toWallet,
+      currencyCode: toWallet.currencyCode,
     );
 
-    // Add both transactions to Hive
     await _box.add(outflow);
     await _box.add(inflow);
   }

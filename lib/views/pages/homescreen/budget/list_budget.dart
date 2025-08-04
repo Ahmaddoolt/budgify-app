@@ -1,3 +1,7 @@
+// lib/views/pages/home_page/budget/list_budget.dart
+
+import 'package:budgify/core/utils/no_data_widget.dart';
+import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/core/utils/snackbar_helper.dart';
 import 'package:budgify/viewmodels/providers/lang_provider.dart';
 import 'package:budgify/core/utils/format_amount.dart';
@@ -12,16 +16,21 @@ import '../../../../domain/models/budget.dart';
 import '../../../../domain/models/category.dart';
 import '../../../../domain/models/expense.dart';
 import '../../../../data/repo/expenses_repository.dart';
-import '../../../../viewmodels/providers/currency_symbol.dart';
-import '../../../../core/utils/scale_config.dart';
 
 class BudgetListView extends ConsumerWidget {
-  const BudgetListView({super.key});
+  // --- THE FIX: Receive both code for logic and symbol for display ---
+  final String currencyCode;
+  final String currencySymbol;
+
+  const BudgetListView({
+    super.key,
+    required this.currencyCode,
+    required this.currencySymbol,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scale = context.scaleConfig;
-    final currency = ref.watch(currencyProvider).currencySymbol;
+    final responsive = context.responsive;
     bool isArabic = ref.watch(languageProvider).toString() == "ar";
 
     final budgetBox = Hive.box<Budget>('budgets');
@@ -33,25 +42,13 @@ class BudgetListView extends ConsumerWidget {
     return ValueListenableBuilder(
       valueListenable: budgetBox.listenable(),
       builder: (context, Box<Budget> box, _) {
-        final budgets = box.values.toList();
+        final allBudgets = box.values.toList();
+        // --- THE FIX: Filter budgets by the unique currencyCode ---
+        final budgets =
+            allBudgets.where((b) => b.currencyCode == currencyCode).toList();
 
         if (budgets.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Lottie.asset(
-                  "assets/money_s.json",
-                  width: scale.scale(86),
-                  fit: BoxFit.fill,
-                ),
-                Text(
-                  'No Budgets found.'.tr,
-                  style: TextStyle(fontSize: scale.scaleText(12)),
-                ),
-              ],
-            ),
-          );
+          return const NoDataWidget();
         }
 
         return StreamBuilder<List<CashFlow>>(
@@ -59,10 +56,12 @@ class BudgetListView extends ConsumerWidget {
           builder: (context, snapshot) {
             final expenses = snapshot.data ?? [];
             final now = DateTime.now();
+            // --- THE FIX: Also filter expenses by the unique currencyCode ---
             final currentMonthExpenses = expenses.where(
               (expense) =>
                   expense.date.year == now.year &&
-                  expense.date.month == now.month,
+                  expense.date.month == now.month &&
+                  expense.currencyCode == currencyCode,
             );
 
             final Map<String, double> monthlyCategoryTotals = {};
@@ -79,27 +78,37 @@ class BudgetListView extends ConsumerWidget {
                   final budget = budgets[index];
                   final category = categoriesBox.get(budget.categoryId);
 
+                  // Use the symbol stored in the budget itself
+                  final String currency = budget.currencySymbol;
+
                   if (category == null) return const SizedBox();
 
-                  final spentAmount = monthlyCategoryTotals[category.name] ?? 0.0;
+                  final spentAmount =
+                      monthlyCategoryTotals[category.name] ?? 0.0;
                   final budgetAmount = budget.budgetAmount;
-                  final progress = (spentAmount / budgetAmount).clamp(0.0, 1.0);
+
+                  final progress = (budgetAmount > 0)
+                      ? (spentAmount / budgetAmount).clamp(0.0, 1.0)
+                      : 0.0;
+
                   bool showWarning = progress >= 0.75;
 
                   return Padding(
-                    padding: EdgeInsets.all(scale.scale(12)),
+                    padding: EdgeInsets.all(responsive.setWidth(12)),
                     child: Container(
                       constraints: BoxConstraints(
-                        minWidth: scale.tabletScale(185),
-                        maxWidth: scale.tabletScale(195),
+                        minWidth: responsive.setWidth(185),
+                        maxWidth: responsive.setWidth(195),
                       ),
-                      padding: EdgeInsets.all(scale.scale(16)),
+                      padding: EdgeInsets.all(responsive.setWidth(16)),
                       decoration: BoxDecoration(
                         color: cardColor,
-                        borderRadius: BorderRadius.circular(scale.scale(16)),
+                        borderRadius: BorderRadius.circular(
+                          responsive.setWidth(16),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: applyOpacity(Colors.black, 0.3),
+                            color: Colors.black.withOpacity(0.3),
                             spreadRadius: 2,
                             blurRadius: 8,
                             offset: const Offset(0, 4),
@@ -113,20 +122,16 @@ class BudgetListView extends ConsumerWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Category icon and info
                               Expanded(
                                 child: Row(
                                   children: [
                                     Container(
-                                      width: scale.scale(45),
-                                      height: scale.scale(45),
+                                      width: responsive.setWidth(45),
+                                      height: responsive.setHeight(45),
                                       decoration: BoxDecoration(
-                                        color: applyOpacity(
-                                          category.color,
-                                          0.2,
-                                        ),
+                                        color: category.color.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(
-                                          scale.scale(12),
+                                          responsive.setWidth(12),
                                         ),
                                       ),
                                       child: Icon(
@@ -134,22 +139,25 @@ class BudgetListView extends ConsumerWidget {
                                         color: category.color,
                                       ),
                                     ),
-                                    SizedBox(width: scale.scale(12)),
+                                    SizedBox(width: responsive.setWidth(12)),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             category.name.tr,
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              fontSize: scale.scaleText(10),
+                                              fontSize: responsive.setSp(10),
                                               color: Colors.white,
                                             ),
                                             overflow: TextOverflow.ellipsis,
                                             maxLines: 1,
                                           ),
-                                          SizedBox(height: scale.scale(2)),
+                                          SizedBox(
+                                            height: responsive.setHeight(2),
+                                          ),
                                           Row(
                                             children: [
                                               isArabic
@@ -161,15 +169,19 @@ class BudgetListView extends ConsumerWidget {
                                                             ref,
                                                           ),
                                                           style: TextStyle(
-                                                            fontSize: scale.scaleText(8),
-                                                            color: Colors.grey[400],
+                                                            fontSize: responsive
+                                                                .setSp(8),
+                                                            color: Colors
+                                                                .grey[400],
                                                           ),
                                                         ),
                                                         Text(
                                                           currency,
                                                           style: TextStyle(
-                                                            fontSize: scale.scaleText(8),
-                                                            color: Colors.grey[400],
+                                                            fontSize: responsive
+                                                                .setSp(8),
+                                                            color: Colors
+                                                                .grey[400],
                                                           ),
                                                         ),
                                                       ],
@@ -177,14 +189,15 @@ class BudgetListView extends ConsumerWidget {
                                                   : Text(
                                                       '$currency${getFormattedAmount((budgetAmount / 30), ref)}',
                                                       style: TextStyle(
-                                                        fontSize: scale.scaleText(8),
+                                                        fontSize:
+                                                            responsive.setSp(8),
                                                         color: Colors.grey[400],
                                                       ),
                                                     ),
                                               Text(
                                                 " per day".tr,
                                                 style: TextStyle(
-                                                  fontSize: scale.scaleText(8),
+                                                  fontSize: responsive.setSp(8),
                                                   color: Colors.grey[400],
                                                 ),
                                               ),
@@ -196,16 +209,15 @@ class BudgetListView extends ConsumerWidget {
                                   ],
                                 ),
                               ),
-                              // Delete button
                               SizedBox(
-                                width: scale.scale(30),
+                                width: responsive.setWidth(30),
                                 child: IconButton(
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
                                   icon: Icon(
                                     Icons.remove_circle,
                                     color: AppColors.accentColor2,
-                                    size: scale.scale(15),
+                                    size: responsive.setWidth(15),
                                   ),
                                   onPressed: () {
                                     showDialog(
@@ -216,14 +228,18 @@ class BudgetListView extends ConsumerWidget {
                                             Icon(
                                               Icons.warning_amber_rounded,
                                               color: AppColors.accentColor2,
-                                              size: scale.scale(20),
+                                              size: responsive.setWidth(20),
                                             ),
-                                            SizedBox(width: scale.scale(6)),
+                                            SizedBox(
+                                              width: responsive.setWidth(6),
+                                            ),
                                             Text(
                                               'Delete Budget'.tr,
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: scale.scaleText(14),
+                                                fontSize: responsive.setSp(
+                                                  14,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -232,29 +248,35 @@ class BudgetListView extends ConsumerWidget {
                                           'Are you sure you want to delete this budget? This action cannot be undone.'
                                               .tr,
                                           style: TextStyle(
-                                            fontSize: scale.scaleText(12),
+                                            fontSize: responsive.setSp(12),
                                             color: Colors.white,
                                           ),
                                         ),
                                         actions: [
                                           TextButton(
-                                            onPressed: () => Navigator.of(context).pop(),
+                                            onPressed: () => Navigator.of(
+                                              context,
+                                            ).pop(),
                                             child: Text(
                                               'Cancel'.tr,
                                               style: TextStyle(
                                                 color: AppColors.accentColor,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: scale.scaleText(12),
+                                                fontSize: responsive.setSp(
+                                                  12,
+                                                ),
                                               ),
                                             ),
                                           ),
                                           TextButton(
                                             onPressed: () {
-                                              budgetBox.deleteAt(index);
+                                              // Use the budget's key for safe deletion
+                                              budgetBox.delete(budget.key);
                                               Navigator.of(context).pop();
                                               showFeedbackSnackbar(
                                                 context,
-                                                'Budget deleted successfully!'.tr,
+                                                'Budget deleted successfully!'
+                                                    .tr,
                                               );
                                             },
                                             child: Text(
@@ -262,7 +284,9 @@ class BudgetListView extends ConsumerWidget {
                                               style: TextStyle(
                                                 color: AppColors.accentColor2,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: scale.scaleText(12),
+                                                fontSize: responsive.setSp(
+                                                  12,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -270,7 +294,7 @@ class BudgetListView extends ConsumerWidget {
                                         backgroundColor: cardColor,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            scale.scale(16),
+                                            responsive.setWidth(16),
                                           ),
                                         ),
                                       ),
@@ -280,7 +304,7 @@ class BudgetListView extends ConsumerWidget {
                               ),
                             ],
                           ),
-                          SizedBox(height: scale.scale(8)),
+                          SizedBox(height: responsive.setHeight(8)),
                           LinearProgressIndicator(
                             borderRadius: BorderRadius.circular(12),
                             value: progress,
@@ -289,44 +313,46 @@ class BudgetListView extends ConsumerWidget {
                                 : AppColors.accentColor,
                             backgroundColor:
                                 Theme.of(context).scaffoldBackgroundColor,
-                            minHeight: scale.scale(10),
+                            minHeight: responsive.setHeight(10),
                           ),
-                          SizedBox(height: scale.scale(6)),
+                          SizedBox(height: responsive.setHeight(6)),
                           !isArabic
                               ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '$currency${getFormattedAmount(spentAmount, ref)}',
                                       style: TextStyle(
                                         color: Colors.grey[300],
-                                        fontSize: scale.scaleText(7),
+                                        fontSize: responsive.setSp(7),
                                       ),
                                     ),
                                     Text(
                                       "$currency${getFormattedAmount(budgetAmount, ref)}",
                                       style: TextStyle(
                                         color: Colors.grey[300],
-                                        fontSize: scale.scaleText(7),
+                                        fontSize: responsive.setSp(7),
                                       ),
                                     ),
                                   ],
                                 )
                               : Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${getFormattedAmount(spentAmount, ref)}$currency',
                                       style: TextStyle(
                                         color: Colors.grey[300],
-                                        fontSize: scale.scaleText(7),
+                                        fontSize: responsive.setSp(7),
                                       ),
                                     ),
                                     Text(
                                       "${getFormattedAmount(budgetAmount, ref)}$currency",
                                       style: TextStyle(
                                         color: Colors.grey[300],
-                                        fontSize: scale.scaleText(7),
+                                        fontSize: responsive.setSp(7),
                                       ),
                                     ),
                                   ],

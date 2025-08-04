@@ -1,8 +1,10 @@
+// lib/views/pages/graphscreen/charts/pie_chart_merge.dart
+
 import 'package:budgify/core/themes/app_colors.dart';
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/data/repo/expenses_repository.dart';
 import 'package:budgify/domain/models/expense.dart';
-import 'package:budgify/viewmodels/providers/currency_symbol.dart';
+import 'package:budgify/viewmodels/providers/lang_provider.dart';
 import 'package:budgify/core/utils/format_amount.dart';
 import 'package:budgify/core/utils/no_data_widget.dart';
 import 'package:budgify/core/utils/parrot_animation_waiting.dart';
@@ -12,6 +14,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 
 class IncomeExpensePieChart extends ConsumerWidget {
+  // --- THE FIX: Receive both code and symbol ---
+  final String currencyCode;
+  final String currencySymbol;
   final int day;
   final int month;
   final int year;
@@ -21,6 +26,8 @@ class IncomeExpensePieChart extends ConsumerWidget {
 
   const IncomeExpensePieChart({
     super.key,
+    required this.currencyCode,
+    required this.currencySymbol,
     required this.day,
     required this.month,
     required this.year,
@@ -31,31 +38,27 @@ class IncomeExpensePieChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scaleConfig = ScaleConfig(context);
+    final responsive = context.responsive;
     final repository = ExpensesRepository();
-    final currencyState = ref.watch(currencyProvider);
+    final isArabic = ref.watch(languageProvider).toString() == 'ar';
 
     return StreamBuilder<List<CashFlow>>(
       stream: repository.getExpensesStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return ParrotAnimation();
+          return const ParrotAnimation();
         } else if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error: ${snapshot.error}'.tr,
-              style: TextStyle(
-                fontSize: scaleConfig.scaleText(16),
-                color: Colors.red,
-              ),
-            ),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'.tr));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return NoDataWidget();
+          return const NoDataWidget();
         }
 
         final now = DateTime.now();
+
+        // --- THE FIX: Filter by currencyCode ---
         final filteredExpenses = snapshot.data!.where((expense) {
+          if (expense.currencyCode != currencyCode) return false;
+
           final expenseDate = expense.date;
           bool yearMatches = isYear ? expenseDate.year == year : true;
           if (!isYear && (isMonth || isDay)) {
@@ -68,7 +71,7 @@ class IncomeExpensePieChart extends ConsumerWidget {
         }).toList();
 
         if (filteredExpenses.isEmpty) {
-          return NoDataWidget();
+          return const NoDataWidget();
         }
 
         double totalExpenses = 0.0;
@@ -83,27 +86,29 @@ class IncomeExpensePieChart extends ConsumerWidget {
         }
 
         final double totalAmount = totalIncomes - totalExpenses;
-        final double totalAmount2 = totalExpenses + totalIncomes;
+        final double totalSumForPercentage = totalExpenses + totalIncomes;
 
         List<PieChartSectionData> sections = [
-          PieChartSectionData(
-            showTitle: false,
-            value: totalExpenses,
-            color: AppColors.accentColor2,
-            radius: scaleConfig.scale(30),
-          ),
-          PieChartSectionData(
-            showTitle: false,
-            value: totalIncomes,
-            color: AppColors.accentColor,
-            radius: scaleConfig.scale(30),
-          ),
+          if (totalExpenses > 0)
+            PieChartSectionData(
+              showTitle: false,
+              value: totalExpenses,
+              color: AppColors.accentColor2,
+              radius: responsive.setWidth(30),
+            ),
+          if (totalIncomes > 0)
+            PieChartSectionData(
+              showTitle: false,
+              value: totalIncomes,
+              color: AppColors.accentColor,
+              radius: responsive.setWidth(30),
+            ),
         ];
 
-        final double fontSize = scaleConfig.scaleText(9);
+        final double fontSize = responsive.setSp(9);
 
         return Padding(
-          padding: EdgeInsets.only(right: scaleConfig.scale(5)),
+          padding: EdgeInsets.only(right: responsive.setWidth(5)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -114,104 +119,91 @@ class IncomeExpensePieChart extends ConsumerWidget {
                     PieChart(
                       PieChartData(
                         sections: sections,
-                        sectionsSpace: scaleConfig.scale(2),
-                        centerSpaceRadius: scaleConfig.scale(30),
+                        sectionsSpace: responsive.setWidth(2),
+                        centerSpaceRadius: responsive.setWidth(30),
                         centerSpaceColor: Colors.transparent,
                       ),
                     ),
-                    Text(
-                      totalAmount2 > 0
-                          ? '${currencyState.currencySymbol}${getFormattedAmount(totalAmount, ref)}'
-                          : '0',
-                      style: TextStyle(
-                        fontSize: scaleConfig.scaleText(9),
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textColorDarkTheme,
-                      ),
-                    ),
+                    isArabic
+                        ? Text(
+                            totalSumForPercentage > 0
+                                ? '${getFormattedAmount(totalAmount, ref)}$currencySymbol'
+                                : '0 $currencySymbol',
+                            style: TextStyle(
+                                fontSize: responsive.setSp(9),
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textColorDarkTheme),
+                          )
+                        : Text(
+                            totalSumForPercentage > 0
+                                ? '$currencySymbol${getFormattedAmount(totalAmount, ref)}'
+                                : '$currencySymbol 0',
+                            style: TextStyle(
+                                fontSize: responsive.setSp(9),
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textColorDarkTheme),
+                          ),
                   ],
                 ),
               ),
-              SizedBox(width: scaleConfig.scale(20)),
+              SizedBox(width: responsive.setWidth(20)),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: EdgeInsets.symmetric(vertical: scaleConfig.scale(4)),
+                        padding: EdgeInsets.symmetric(
+                            vertical: responsive.setHeight(4)),
                         child: Row(
                           children: [
                             Container(
-                              width: scaleConfig.scale(12),
-                              height: scaleConfig.scale(12),
-                              color: AppColors.accentColor2,
-                            ),
-                            SizedBox(width: scaleConfig.scale(7)),
+                                width: responsive.setWidth(12),
+                                height: responsive.setHeight(12),
+                                color: AppColors.accentColor2),
+                            SizedBox(width: responsive.setWidth(7)),
                             Expanded(
-                              child: Text(
-                                'Expenses'.tr,
-                                style: TextStyle(
-                                  fontSize: fontSize,
-                                  color: AppColors.textColorDarkTheme,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                                child: Text('Expenses'.tr,
+                                    style: TextStyle(
+                                        fontSize: fontSize,
+                                        color: AppColors.textColorDarkTheme),
+                                    overflow: TextOverflow.ellipsis)),
                             Text(
-                              totalAmount2 > 0
-                                  ? '${((totalExpenses / totalAmount2) * 100).toStringAsFixed(0)}%'
-                                  : '0%',
-                              style: TextStyle(
-                                fontSize: fontSize,
-                                color: AppColors.textColorDarkTheme,
-                              ),
-                            ),
+                                totalSumForPercentage > 0
+                                    ? '${((totalExpenses / totalSumForPercentage) * 100).toStringAsFixed(0)}%'
+                                    : '0%',
+                                style: TextStyle(
+                                    fontSize: fontSize,
+                                    color: AppColors.textColorDarkTheme)),
                           ],
                         ),
                       ),
                       Padding(
-                        padding: EdgeInsets.symmetric(vertical: scaleConfig.scale(4)),
+                        padding: EdgeInsets.symmetric(
+                            vertical: responsive.setHeight(4)),
                         child: Row(
                           children: [
                             Container(
-                              width: scaleConfig.scale(12),
-                              height: scaleConfig.scale(12),
-                              color: AppColors.accentColor,
-                            ),
-                            SizedBox(width: scaleConfig.scale(7)),
+                                width: responsive.setWidth(12),
+                                height: responsive.setHeight(12),
+                                color: AppColors.accentColor),
+                            SizedBox(width: responsive.setWidth(7)),
                             Expanded(
-                              child: Text(
-                                'Incomes'.tr,
-                                style: TextStyle(
-                                  fontSize: fontSize,
-                                  color: AppColors.textColorDarkTheme,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                                child: Text('Incomes'.tr,
+                                    style: TextStyle(
+                                        fontSize: fontSize,
+                                        color: AppColors.textColorDarkTheme),
+                                    overflow: TextOverflow.ellipsis)),
                             Text(
-                              totalAmount2 > 0
-                                  ? '${((totalIncomes / totalAmount2) * 100).toStringAsFixed(0)}%'
-                                  : '0%',
-                              style: TextStyle(
-                                fontSize: fontSize,
-                                color: AppColors.textColorDarkTheme,
-                              ),
-                            ),
+                                totalSumForPercentage > 0
+                                    ? '${((totalIncomes / totalSumForPercentage) * 100).toStringAsFixed(0)}%'
+                                    : '0%',
+                                style: TextStyle(
+                                    fontSize: fontSize,
+                                    color: AppColors.textColorDarkTheme)),
                           ],
                         ),
                       ),
-                      // Padding(
-                      //   padding: EdgeInsets.only(top: scaleConfig.scale(8)),
-                      //   child: Text(
-                      //     'Scroll for more'.tr,
-                      //     style: TextStyle(
-                      //       fontSize: scaleConfig.scaleText(12),
-                      //       color: Colors.grey,
-                      //     ),
-                      //   ),
-                      // ),
                     ],
                   ),
                 ),

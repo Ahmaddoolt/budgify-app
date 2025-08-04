@@ -1,3 +1,5 @@
+// lib/data/repo/budget_repository.dart
+
 import 'package:hive/hive.dart';
 import '../../domain/models/budget.dart';
 import '../../domain/models/category.dart';
@@ -18,9 +20,11 @@ class BudgetRepository {
     await _budgetBox.add(budget);
   }
 
-  // Check if a budget already exists for a given category
-  bool doesBudgetExistForCategory(String categoryId) {
-    return _budgetBox.values.any((budget) => budget.categoryId == categoryId);
+  // --- THE FIX: This method now requires a currencyCode to be accurate ---
+  /// Checks if a budget already exists for a given category AND currency.
+  bool doesBudgetExistForCategory(String categoryId, String currencyCode) {
+    return _budgetBox.values.any((budget) =>
+        budget.categoryId == categoryId && budget.currencyCode == currencyCode);
   }
 
   // Load all budgets (useful for refreshing the budget list)

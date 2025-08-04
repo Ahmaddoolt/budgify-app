@@ -1,3 +1,5 @@
+// lib/views/widgets/cards/status_expenses_card.dart
+
 import 'package:budgify/core/themes/app_colors.dart';
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/viewmodels/providers/lang_provider.dart';
@@ -5,55 +7,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
-import '../../../viewmodels/providers/total_expenses_amount.dart';
-import '../../../viewmodels/providers/total_expenses_monthly.dart';
-import '../../../viewmodels/providers/total_incomes.dart';
-import '../../../viewmodels/providers/total_incomes_monthly.dart';
 import '../../../core/utils/format_amount.dart';
 import 'package:budgify/views/widgets/cards/progress_row.dart';
 
 class ExpensesCardProgress extends ConsumerWidget {
-  final double totalSpendCategory;
-  final String categoryType;
-  final String? currencySymbol;
+  // --- THE FIX: Simplified parameters. It now receives all necessary values directly. ---
+  final double categoryTotal;
+  final double allCategoriesTotal;
+  final String categoryName;
+  final String currencySymbol;
   final bool isIncome;
-  final bool isMonth;
 
-  const ExpensesCardProgress(
-    this.totalSpendCategory,
-    this.categoryType,
-    this.currencySymbol,
-    this.isIncome,
-    this.isMonth, {
+  const ExpensesCardProgress({
     super.key,
+    required this.categoryTotal,
+    required this.allCategoriesTotal,
+    required this.categoryName,
+    required this.currencySymbol,
+    required this.isIncome,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scaleConfig = ScaleConfig(context); // Use ScaleConfig for responsive sizing
+    final responsive = context.responsive;
     final language = ref.watch(languageProvider).toString();
 
-    // Calculate total amount based on income/expense and time period
-    double totalAmount = 0.0;
-    if (isIncome && isMonth) {
-      totalAmount = ref.watch(monthlyIncomesAmountProvider);
-    } else if (isIncome && !isMonth) {
-      totalAmount = ref.watch(totalIncomesAmountProvider);
-    } else if (!isIncome && isMonth) {
-      totalAmount = ref.watch(monthlyAmountProvider);
-    } else {
-      totalAmount = ref.watch(totalAmountProvider);
-    }
-
-    // Responsive sizing for card
-    final cardWidth = scaleConfig.isTablet
-        ? scaleConfig.widthPercentage(0.9) // 90% for tablets
-        : scaleConfig.widthPercentage(0.92); // 92% for phones
-    final cardHeight = scaleConfig.isTablet
-        ? scaleConfig.scale(180) // Taller for tablets
-        : scaleConfig.scale(162); // Standard height for phones
-    final padding = scaleConfig.scale(12);
-    final borderRadius = scaleConfig.scale(12);
+    final cardWidth = responsive.isTablet
+        ? responsive.widthPercent(0.9)
+        : responsive.widthPercent(0.92);
+    final cardHeight = responsive.isTablet
+        ? responsive.setHeight(180)
+        : responsive.setHeight(162);
+    final padding = responsive.setWidth(12);
+    final borderRadius = responsive.setWidth(12);
 
     return Card(
       elevation: 5,
@@ -76,60 +62,60 @@ class ExpensesCardProgress extends ConsumerWidget {
                   Text(
                     isIncome ? "Total Earning".tr : 'Total Spending'.tr,
                     style: TextStyle(
-                      fontSize: scaleConfig.scaleText(15),
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textColorDarkTheme,
-                    ),
+                        fontSize: responsive.setSp(15),
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textColorDarkTheme),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   language == 'ar'
                       ? Text(
-                          '${getFormattedAmount(totalSpendCategory, ref)} $currencySymbol',
+                          '${getFormattedAmount(categoryTotal, ref)} $currencySymbol', // Use categoryTotal from params
                           style: TextStyle(
-                            fontSize: scaleConfig.scaleText(15),
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accentColor,
-                          ),
+                              fontSize: responsive.setSp(15),
+                              fontWeight: FontWeight.bold,
+                              color: isIncome
+                                  ? AppColors.accentColor
+                                  : AppColors.accentColor2),
                         )
                       : Text(
-                          '$currencySymbol ${getFormattedAmount(totalSpendCategory, ref)}',
+                          '$currencySymbol ${getFormattedAmount(categoryTotal, ref)}', // Use categoryTotal from params
                           style: TextStyle(
-                            fontSize: scaleConfig.scaleText(15),
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accentColor,
-                          ),
+                              fontSize: responsive.setSp(15),
+                              fontWeight: FontWeight.bold,
+                              color: isIncome
+                                  ? AppColors.accentColor
+                                  : AppColors.accentColor2),
                         ),
-                  SizedBox(height: scaleConfig.scale(4)),
+                  SizedBox(height: responsive.setHeight(4)),
                   SizedBox(
-                    width: scaleConfig.isTablet
-                        ? scaleConfig.scale(200) // Wider for tablets
-                        : scaleConfig.scale(164), // Standard for phones
+                    width: responsive.isTablet
+                        ? responsive.setWidth(200)
+                        : responsive.setWidth(164),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
                           child: Text(
-                            categoryType.tr,
+                            categoryName.tr,
                             style: TextStyle(
-                              fontSize: scaleConfig.isTablet
-                                  ? scaleConfig.scaleText(12.5)
-                                  : scaleConfig.scaleText(11.5),
-                              color: Colors.grey,
-                            ),
+                                fontSize: responsive.isTablet
+                                    ? responsive.setSp(12.5)
+                                    : responsive.setSp(11.5),
+                                color: Colors.grey),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Flexible(
                           child: Text(
-                            getFormattedAmount(totalAmount, ref),
+                            getFormattedAmount(allCategoriesTotal,
+                                ref), // Use allCategoriesTotal from params
                             style: TextStyle(
-                              fontSize: scaleConfig.isTablet
-                                  ? scaleConfig.scaleText(12.5)
-                                  : scaleConfig.scaleText(11.5),
-                              color: Colors.grey,
-                            ),
+                                fontSize: responsive.isTablet
+                                    ? responsive.setSp(12.5)
+                                    : responsive.setSp(11.5),
+                                color: Colors.grey),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -138,14 +124,17 @@ class ExpensesCardProgress extends ConsumerWidget {
                     ),
                   ),
                   ProgressRow(
-                    progress: totalAmount > 0
-                        ? (totalSpendCategory > totalAmount
+                    progress: allCategoriesTotal > 0
+                        ? (categoryTotal > allCategoriesTotal
                             ? 1
-                            : totalSpendCategory / totalAmount)
+                            : categoryTotal / allCategoriesTotal)
                         : 0,
                     label: 'Spent',
-                    amount: '$currencySymbol ${getFormattedAmount(totalAmount, ref)}',
-                    progressColor: AppColors.accentColor2,
+                    amount:
+                        '$currencySymbol ${getFormattedAmount(allCategoriesTotal, ref)}', // Use allCategoriesTotal from params
+                    progressColor: isIncome
+                        ? AppColors.accentColor
+                        : AppColors.accentColor2,
                   ),
                 ],
               ),
@@ -154,8 +143,8 @@ class ExpensesCardProgress extends ConsumerWidget {
               flex: 1,
               child: Lottie.asset(
                 "assets/cash_fly.json",
-                width: scaleConfig.scale(91.5),
-                height: scaleConfig.scale(91.5),
+                width: responsive.setWidth(91.5),
+                height: responsive.setHeight(91.5),
                 fit: BoxFit.contain,
               ),
             ),

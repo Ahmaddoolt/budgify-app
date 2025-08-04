@@ -1,14 +1,17 @@
+// lib/views/pages/onboarding/onboarding_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:budgify/core/constants/app_constants.dart';
 import 'package:budgify/core/constants/onboarding_data.dart';
 import 'package:budgify/core/utils/snackbar_helper.dart';
-import 'package:budgify/views/navigation/bottom_nativgation/bottom_navigation_bar.dart';
+import 'package:budgify/core/navigation/bottom_nativgation/bottom_navigation_bar.dart';
 import 'package:budgify/viewmodels/providers/currency_symbol.dart';
 import 'package:budgify/viewmodels/providers/lang_provider.dart';
 import 'package:budgify/viewmodels/providers/switchOnOffIncome.dart';
-
 import 'onboarding_widgets/onboarding_button.dart';
 import 'onboarding_widgets/onboarding_dots.dart';
 import 'onboarding_widgets/onboarding_slider.dart';
@@ -22,33 +25,25 @@ class OnBoardingScreen extends ConsumerStatefulWidget {
 
 class _OnBoardingScreenState extends ConsumerState<OnBoardingScreen> {
   late final PageController _pageController;
-  late final SettingsRepository _settingsRepository;
+  late SettingsRepository _settingsRepository;
   int _currentPage = 0;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    SharedPreferences.getInstance().then((prefs) {
-      _settingsRepository = SettingsRepository(prefs);
-      _verifyInitialState();
-    });
+    _initialize();
   }
 
-  Future<void> _verifyInitialState() async {
-    debugPrint('OnBoarding: Initial state at ${DateTime.now()}');
-    debugPrint(
-      'OnBoarding: onboarding_completed: ${await _settingsRepository.isOnboardingCompleted()}',
-    );
-    debugPrint(
-      'OnBoarding: Currency: ${await _settingsRepository.getCurrency()}',
-    );
-    debugPrint(
-      'OnBoarding: Language: ${await _settingsRepository.getLanguage()}',
-    );
-    debugPrint(
-      'OnBoarding: Switch state: ${await _settingsRepository.getSwitchState()}',
-    );
+  void _initialize() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _settingsRepository = SettingsRepository(prefs);
+        _isInitialized = true;
+      });
+    }
   }
 
   @override
@@ -58,17 +53,12 @@ class _OnBoardingScreenState extends ConsumerState<OnBoardingScreen> {
   }
 
   Future<void> _next() async {
+    if (!_isInitialized) return; // Prevent action if not ready
+
     if (_currentPage == 0) {
       final language = ref.read(languageProvider).languageCode;
       if (language.isEmpty) {
-        showFeedbackSnackbar(context, 'Please select a language');
-        return;
-      }
-    } else if (_currentPage == 2) {
-      final currentCurrency = ref.read(currencyProvider).currencySymbol;
-      if (currentCurrency.isEmpty) {
-        showFeedbackSnackbar(context, 'Please Choose the Currency Symbol');
-
+        showFeedbackSnackbar(context, 'Please select a language'.tr);
         return;
       }
     }
@@ -82,36 +72,34 @@ class _OnBoardingScreenState extends ConsumerState<OnBoardingScreen> {
 
   Future<void> _completeOnboarding() async {
     try {
+      // Get the full Currency object from the provider's state
+      final selectedCurrency = ref.read(currencyProvider).displayCurrency;
+
       await _settingsRepository.saveSettings(
-        currency: ref.read(currencyProvider).currencySymbol,
+        currencyCode: selectedCurrency.code, // SAVING THE CODE
         languageCode: ref.read(languageProvider).languageCode,
         isSwitched: ref.read(switchProvider).isSwitched,
       );
       await _settingsRepository.setOnboardingCompleted(true);
 
-      debugPrint(
-        'OnBoarding: Final settings - Currency: ${await _settingsRepository.getCurrency()}, Language: ${await _settingsRepository.getLanguage()}, Switch: ${await _settingsRepository.getSwitchState()}',
-      );
-
       if (mounted) {
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute(builder: (_) => const Bottom()));
-        debugPrint(
-          'OnBoarding: Navigated to Bottom screen at ${DateTime.now()}',
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const Bottom()),
         );
       }
     } catch (e) {
       debugPrint('OnBoarding: Error completing onboarding: $e');
-      // ignore: use_build_context_synchronously
-      showFeedbackSnackbar(context, 'Error saving settings. Please try again.');
+      if (mounted) {
+        showFeedbackSnackbar(
+          context,
+          'Error saving settings. Please try again.'.tr,
+        );
+      }
     }
   }
 
   void _goToNextPage() {
-    setState(() => _currentPage++);
-    _pageController.animateToPage(
-      _currentPage,
+    _pageController.nextPage(
       duration: AppConstants.pageTransitionDuration,
       curve: Curves.easeInOut,
     );
@@ -126,7 +114,14 @@ class _OnBoardingScreenState extends ConsumerState<OnBoardingScreen> {
           children: [
             Expanded(
               flex: 3,
-              child: OnBoardingSlider(pageController: _pageController),
+              child: OnBoardingSlider(
+                pageController: _pageController,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -139,7 +134,7 @@ class _OnBoardingScreenState extends ConsumerState<OnBoardingScreen> {
                   const SizedBox(height: AppConstants.spacingLarge * 2),
                   OnBoardingButton(
                     onNext: _next,
-                    label: isLastPage ? 'Get Started' : 'Next',
+                    label: isLastPage ? 'Get Started'.tr : 'Next'.tr,
                   ),
                 ],
               ),
@@ -151,26 +146,24 @@ class _OnBoardingScreenState extends ConsumerState<OnBoardingScreen> {
   }
 }
 
-
 class SettingsRepository {
   final SharedPreferences _prefs;
 
   SettingsRepository(this._prefs);
 
   Future<void> saveSettings({
-    required String currency,
+    required String currencyCode,
     required String languageCode,
     required bool isSwitched,
   }) async {
     try {
       await Future.wait([
-        _prefs.setString(AppConstants.currencyKey, currency),
+        _prefs.setString('currency_code', currencyCode), // Save the code
         _prefs.setString(AppConstants.languageKey, languageCode),
         _prefs.setBool(AppConstants.switchStateKey, isSwitched),
       ]);
-
       await _prefs.reload();
-      if (_prefs.getString(AppConstants.currencyKey) != currency ||
+      if (_prefs.getString('currency_code') != currencyCode ||
           _prefs.getString(AppConstants.languageKey) != languageCode ||
           _prefs.getBool(AppConstants.switchStateKey) != isSwitched) {
         throw Exception('Failed to save settings');
@@ -186,25 +179,5 @@ class SettingsRepository {
     if (_prefs.getBool(AppConstants.onboardingCompletedKey) != value) {
       throw Exception('Failed to set onboarding completed flag');
     }
-  }
-
-  Future<bool> isOnboardingCompleted() async {
-    await _prefs.reload();
-    return _prefs.getBool(AppConstants.onboardingCompletedKey) ?? false;
-  }
-
-  Future<String> getCurrency() async {
-    await _prefs.reload();
-    return _prefs.getString(AppConstants.currencyKey) ?? '';
-  }
-
-  Future<String> getLanguage() async {
-    await _prefs.reload();
-    return _prefs.getString(AppConstants.languageKey) ?? 'en';
-  }
-
-  Future<bool> getSwitchState() async {
-    await _prefs.reload();
-    return _prefs.getBool(AppConstants.switchStateKey) ?? false;
   }
 }

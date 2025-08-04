@@ -38,7 +38,7 @@ class _CategoriesWalletsTabBarState
           elevation: 0,
           title: Text(
             'Categories & Wallets'.tr,
-            style: const TextStyle(fontWeight: FontWeight.bold , fontSize: 18),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           bottom: _buildTabBar(switchState),
         ),
@@ -102,7 +102,6 @@ class _CategoriesWalletsTabBarState
 
   Widget _buildTabBarView(bool switchState) {
     return TabBarView(
-      
       controller: _tabController,
       children:
           switchState
@@ -116,7 +115,11 @@ class _CategoriesWalletsTabBarState
       isScrollControlled: true,
       backgroundColor: Theme.of(context).appBarTheme.backgroundColor!,
       context: context,
-      builder: (context) => AddWalletModal(onWalletAdded: (newWallet) {}),
+      builder:
+          (context) => AddWalletModal(
+            onWalletAdded: (newWallet) {},
+            pageContext: context,
+          ),
     );
   }
 

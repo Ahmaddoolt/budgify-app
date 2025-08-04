@@ -1,5 +1,8 @@
+// lib/views/pages/settings/preferences_settings.dart
+
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:budgify/core/utils/snackbar_helper.dart';
+import 'package:budgify/viewmodels/providers/multi_currency_provider.dart';
 import 'package:budgify/viewmodels/providers/notification_provider.dart';
 import 'package:budgify/viewmodels/providers/sound_switch.dart';
 import 'package:budgify/viewmodels/providers/switchOnOffIncome.dart';
@@ -20,6 +23,7 @@ class PreferencesSettingsSection extends ConsumerWidget {
     final isSeparatorEnabled = ref.watch(separatorProvider).isSeparatorEnabled;
     final isNotificationEnabled = ref.watch(notificationProvider).isEnabled;
     final soundState = ref.watch(soundSwitchProvider);
+    final isMultiCurrencyEnabled = ref.watch(multiCurrencyProvider);
 
     return SettingsSectionCard(
       title: 'Preferences'.tr,
@@ -27,15 +31,21 @@ class PreferencesSettingsSection extends ConsumerWidget {
         SettingsSwitchRow(
           label: 'Income Tracking'.tr,
           value: isIncomeTrackingEnabled,
-          onChanged:
-              (value) => ref.read(switchProvider.notifier).toggleSwitch(value),
+          onChanged: (value) =>
+              ref.read(switchProvider.notifier).toggleSwitch(value),
+        ),
+        SettingsSwitchRow(
+          label: 'Multi-Currency'.tr,
+          value: isMultiCurrencyEnabled,
+          onChanged: (value) => ref
+              .read(multiCurrencyProvider.notifier)
+              .toggleMultiCurrency(value),
         ),
         SettingsSwitchRow(
           label: 'Thousands Separator'.tr,
           value: isSeparatorEnabled,
-          onChanged:
-              (value) =>
-                  ref.read(separatorProvider.notifier).toggleSeparator(value),
+          onChanged: (value) =>
+              ref.read(separatorProvider.notifier).toggleSeparator(value),
         ),
         SettingsSwitchRow(
           label: 'Daily Notifications'.tr,
@@ -58,7 +68,6 @@ class PreferencesSettingsSection extends ConsumerWidget {
   ) async {
     HapticFeedback.lightImpact();
     final notifier = ref.read(notificationProvider.notifier);
-    // final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     if (value) {
       bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
@@ -78,22 +87,23 @@ class PreferencesSettingsSection extends ConsumerWidget {
         isAllowed =
             await AwesomeNotifications().requestPermissionToSendNotifications();
         if (!isAllowed) {
-          // ignore: use_build_context_synchronously
-          showFeedbackSnackbar(context, 'Notification permissions denied'.tr);
-
+          if (context.mounted) {
+            showFeedbackSnackbar(context, 'Notification permissions denied'.tr);
+          }
           return;
         }
       }
     }
 
     await notifier.toggleNotification(value);
-    showFeedbackSnackbar(
-      // ignore: use_build_context_synchronously
-      context,
-      value
-          ? 'Daily notifications enabled'.tr
-          : 'Daily notifications disabled'.tr,
-    );
+    if (context.mounted) {
+      showFeedbackSnackbar(
+        context,
+        value
+            ? 'Daily notifications enabled'.tr
+            : 'Daily notifications disabled'.tr,
+      );
+    }
   }
 
   Future<void> _toggleSound(
@@ -105,11 +115,12 @@ class PreferencesSettingsSection extends ConsumerWidget {
     try {
       await ref.read(soundSwitchProvider.notifier).toggleSound(newValue);
       debugPrint('✅ Toggled sound to: $newValue');
-      showFeedbackSnackbar(
-        // ignore: use_build_context_synchronously
-        context,
-        newValue ? 'Tap sound enabled'.tr : 'Tap sound disabled'.tr,
-      );
+      if (context.mounted) {
+        showFeedbackSnackbar(
+          context,
+          newValue ? 'Tap sound enabled'.tr : 'Tap sound disabled'.tr,
+        );
+      }
     } catch (e) {
       debugPrint('❌ Error toggling sound: $e');
       if (context.mounted) {

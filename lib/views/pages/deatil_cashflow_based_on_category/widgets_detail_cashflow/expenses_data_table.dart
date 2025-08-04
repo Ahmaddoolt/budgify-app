@@ -38,83 +38,99 @@ class ExpensesDataTable extends StatelessWidget {
           DataColumn(label: Text('Date'.tr)),
           DataColumn(label: Text('Method'.tr)),
         ],
-        rows: expenses.map((expense) {
-          Wallet? selectedWallet = wallets.firstWhere(
-            (wallet) => wallet.id == expense.walletType.id,
-            orElse: () {
-              debugPrint('No wallet found for ID: ${expense.walletType.id}, using first wallet');
-              return wallets.isNotEmpty
-                  ? wallets.first
-                  : Wallet(id: 'default', name: 'Default', type: WalletType.cash);
-            },
-          );
-          debugPrint(
-              'Expense ID: ${expense.id}, Wallet ID: ${expense.walletType.id}, Wallet Name: ${selectedWallet.name}');
+        rows:
+            expenses.map((expense) {
+              Wallet? selectedWallet = wallets.firstWhere(
+                (wallet) => wallet.id == expense.walletType.id,
+                orElse: () {
+                  debugPrint(
+                    'No wallet found for ID: ${expense.walletType.id}, using first wallet',
+                  );
+                  return wallets.isNotEmpty
+                      ? wallets.first
+                      : Wallet(
+                        id: 'default',
+                        name: 'Unknown Wallet',
+                        type: WalletType.cash,
+                        currencySymbol:
+                            '???', // Provide a default currency symbol
+                        isDefault: false,
+                        isEnabled:
+                            false, // Make it disabled by default so user knows something is wrong
+                        allowedTransactionType: WalletFunctionality.both,
+                        value: 0.0, currencyCode: '',
+                      );
+                },
+              );
+              debugPrint(
+                'Expense ID: ${expense.id}, Wallet ID: ${expense.walletType.id}, Wallet Name: ${selectedWallet.name}',
+              );
 
-          return DataRow(
-            onSelectChanged: (_) => onRowSelected(expense),
-            cells: [
-              DataCell(
-                SizedBox(
-                  width: scale * 40,
-                  child: Text(
-                    expense.title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: scale * 5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-              DataCell(
-                SizedBox(
-                  width: scale * 50,
-                  child: Consumer(
-                    builder: (context, ref, _) => Text(
-                      getFormattedAmount(expense.amount, ref),
-                      style: TextStyle(
-                        color: AppColors.accentColor,
-                        fontSize: scale * 5,
+              return DataRow(
+                onSelectChanged: (_) => onRowSelected(expense),
+                cells: [
+                  DataCell(
+                    SizedBox(
+                      width: scale * 40,
+                      child: Text(
+                        expense.title,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: scale * 5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     ),
                   ),
-                ),
-              ),
-              DataCell(
-                SizedBox(
-                  width: scale * 70,
-                  child: Text(
-                    DateFormat('yyyy-MM-dd').format(expense.date),
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: scale * 7,
+                  DataCell(
+                    SizedBox(
+                      width: scale * 50,
+                      child: Consumer(
+                        builder:
+                            (context, ref, _) => Text(
+                              getFormattedAmount(expense.amount, ref),
+                              style: TextStyle(
+                                color: AppColors.accentColor,
+                                fontSize: scale * 5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
                   ),
-                ),
-              ),
-              DataCell(
-                SizedBox(
-                  width: scale * 40,
-                  child: Text(
-                    selectedWallet.name,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: scale * 5,
+                  DataCell(
+                    SizedBox(
+                      width: scale * 70,
+                      child: Text(
+                        DateFormat('yyyy-MM-dd').format(expense.date),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: scale * 7,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
                   ),
-                ),
-              ),
-            ],
-          );
-        }).toList(),
+                  DataCell(
+                    SizedBox(
+                      width: scale * 40,
+                      child: Text(
+                        selectedWallet.name,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: scale * 5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
       ),
     );
   }

@@ -1,8 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
-import 'package:alarm/alarm.dart';
+// import 'package:alarm/alarm.dart';
 import 'package:flutter/material.dart'; // Changed from foundation.dart for ValueNotifier & debugPrint
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:budgify/views/pages/alarm/alarmservices/alarm_handlers.dart'; // Ensure this path is correct
 
 // Awesome Notifications constants
 const String awesomeAlarmChannelKey = 'budgify_alarm_channel';
@@ -36,50 +35,50 @@ Future<void> _handleAlarmStop({
 
   try {
     // Fetch original AlarmSettings
-    AlarmSettings alarmSettings;
-    final activeAlarms = await Alarm.getAlarms();
-    final matchingAlarm = activeAlarms.firstWhere(
-      (alarm) => alarm.id == alarmId,
-      orElse: () {
-        debugPrint('NOTIFICATION_HANDLERS: Alarm ID $alarmId not found in active alarms. Using fallback settings.');
-        return AlarmSettings(
-          id: alarmId,
-          dateTime: DateTime.now(),
-          assetAudioPath: 'assets/alarm.mp3',
-          loopAudio: true,
-          vibrate: true,
-          androidFullScreenIntent: true,
-          notificationSettings: NotificationSettings(
-            title: title ?? payload?[awesomeExtraAlarmTitleKey] ?? 'Payment Reminder',
-            body: 'Payment Reminder!',
-            stopButton: 'Stop',
-          ),
-        );
-      },
-    );
-    alarmSettings = matchingAlarm;
-    debugPrint('NOTIFICATION_HANDLERS: Using AlarmSettings for ID $alarmId: Title=${alarmSettings.notificationSettings.title}, Date=${alarmSettings.dateTime}');
+    // AlarmSettings alarmSettings;
+    // final activeAlarms = await Alarm.getAlarms();
+    // final matchingAlarm = activeAlarms.firstWhere(
+    //   (alarm) => alarm.id == alarmId,
+    //   orElse: () {
+    //     debugPrint('NOTIFICATION_HANDLERS: Alarm ID $alarmId not found in active alarms. Using fallback settings.');
+    //     return AlarmSettings(
+    //       id: alarmId,
+    //       dateTime: DateTime.now(),
+    //       assetAudioPath: 'assets/alarm.mp3',
+    //       loopAudio: true,
+    //       vibrate: true,
+    //       androidFullScreenIntent: true,
+    //       notificationSettings: NotificationSettings(
+    //         title: title ?? payload?[awesomeExtraAlarmTitleKey] ?? 'Payment Reminder',
+    //         body: 'Payment Reminder!',
+    //         stopButton: 'Stop',
+    //       ),
+    //     );
+    //   },
+    // );
+    // alarmSettings = matchingAlarm;
+    // debugPrint('NOTIFICATION_HANDLERS: Using AlarmSettings for ID $alarmId: Title=${alarmSettings.notificationSettings.title}, Date=${alarmSettings.dateTime}');
 
     // Call stopAndMarkAlarm
-    await stopAndMarkAlarm(
-      alarmId: alarmId,
-      alarmSettings: alarmSettings,
-      prefs: prefs,
-      notificationId: notificationId,
-    );
+    // await stopAndMarkAlarm(
+    //   alarmId: alarmId,
+    //   alarmSettings: alarmSettings,
+    //   prefs: prefs,
+    //   notificationId: notificationId,
+    // );
 
     debugPrint('NOTIFICATION_HANDLERS: Completed stopAndMarkAlarm for ID $alarmId');
 
     // Verify SharedPreferences (stopAndMarkAlarm already does this, but an extra check here is fine)
     await prefs.reload(); // Ensure prefs is up-to-date before this check
-    final stoppedAlarms = await loadStoppedAlarms(prefs); // loadStoppedAlarms should also reload prefs
-    if (stoppedAlarms.containsKey(alarmId)) {
-      final notificationSettingsMap = stoppedAlarms[alarmId]?['notificationSettings'] as Map<String, dynamic>?;
-      final savedTitle = notificationSettingsMap?['title'] as String? ?? 'Unknown';
-      debugPrint('NOTIFICATION_HANDLERS: Verified stopped alarm ID $alarmId saved: Title=$savedTitle');
-    } else {
-      debugPrint('NOTIFICATION_HANDLERS: ERROR: Stopped alarm ID $alarmId not found in SharedPreferences after stopAndMarkAlarm');
-    }
+    // final stoppedAlarms = await loadStoppedAlarms(prefs); // loadStoppedAlarms should also reload prefs
+    // if (stoppedAlarms.containsKey(alarmId)) {
+    //   final notificationSettingsMap = stoppedAlarms[alarmId]?['notificationSettings'] as Map<String, dynamic>?;
+    //   final savedTitle = notificationSettingsMap?['title'] as String? ?? 'Unknown';
+    //   debugPrint('NOTIFICATION_HANDLERS: Verified stopped alarm ID $alarmId saved: Title=$savedTitle');
+    // } else {
+    //   debugPrint('NOTIFICATION_HANDLERS: ERROR: Stopped alarm ID $alarmId not found in SharedPreferences after stopAndMarkAlarm');
+    // }
 
     // Trigger UI refresh for AlarmListPage if it's listening
     // This happens AFTER SharedPreferences has been updated by stopAndMarkAlarm

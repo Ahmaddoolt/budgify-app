@@ -1,4 +1,7 @@
+// lib/views/pages/deatil_cashflow_based_on_category/widgets_detail_cashflow/category_expenses_list_page.dart
+
 import 'package:budgify/core/themes/app_colors.dart';
+import 'package:budgify/core/utils/format_amount.dart';
 import 'package:budgify/core/utils/scale_config.dart';
 import 'package:budgify/domain/models/expense.dart';
 import 'package:budgify/domain/models/wallet.dart';
@@ -7,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '../../../core/utils/format_amount.dart';
 
 class CategoryExpensesListPage extends ConsumerWidget {
   final String categoryName;
@@ -45,8 +47,7 @@ class CategoryExpensesListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scaleConfig = ScaleConfig(context);
-    final screenWidth = MediaQuery.of(context).size.width;
+    final responsive = context.responsive;
     Color? cardcolor = Theme.of(context).appBarTheme.backgroundColor;
 
     debugPrint(
@@ -55,25 +56,23 @@ class CategoryExpensesListPage extends ConsumerWidget {
 
     if (expenses.isEmpty) {
       debugPrint('No expenses to display');
-      return NoDataWidget();
+      return const NoDataWidget();
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: Container(
-        width: scaleConfig.scale(screenWidth * 0.85), // Responsive width
-        margin: EdgeInsets.symmetric(
-          horizontal: scaleConfig.scale(screenWidth * 0.05),
-        ),
+        width: responsive.widthPercent(0.9),
+        margin: EdgeInsets.symmetric(horizontal: responsive.widthPercent(0.05)),
         decoration: BoxDecoration(
           color: cardcolor,
-          borderRadius: BorderRadius.circular(scaleConfig.scale(8)),
+          borderRadius: BorderRadius.circular(responsive.setWidth(8)),
           border: Border.all(color: cardcolor!.withOpacity(0.3)),
         ),
         child: DataTable(
-          showCheckboxColumn: false, // Explicitly disable checkbox
-          columnSpacing: scaleConfig.scale(screenWidth * 0.03),
-          dataRowHeight: scaleConfig.scale(screenWidth * 0.12),
+          showCheckboxColumn: false,
+          columnSpacing: responsive.widthPercent(0.03),
+          dataRowHeight: responsive.setHeight(55),
           headingRowColor: WidgetStateProperty.all(
             AppColors.accentColor.withOpacity(0.2),
           ),
@@ -93,7 +92,7 @@ class CategoryExpensesListPage extends ConsumerWidget {
               label: Text(
                 'Title'.tr,
                 style: TextStyle(
-                  fontSize: scaleConfig.scaleText(10),
+                  fontSize: responsive.setSp(11),
                   color: AppColors.textColorDarkTheme,
                   fontWeight: FontWeight.bold,
                 ),
@@ -103,7 +102,7 @@ class CategoryExpensesListPage extends ConsumerWidget {
               label: Text(
                 'Amount'.tr,
                 style: TextStyle(
-                  fontSize: scaleConfig.scaleText(10),
+                  fontSize: responsive.setSp(11),
                   color: AppColors.textColorDarkTheme,
                   fontWeight: FontWeight.bold,
                 ),
@@ -113,7 +112,7 @@ class CategoryExpensesListPage extends ConsumerWidget {
               label: Text(
                 'Date'.tr,
                 style: TextStyle(
-                  fontSize: scaleConfig.scaleText(10),
+                  fontSize: responsive.setSp(11),
                   color: AppColors.textColorDarkTheme,
                   fontWeight: FontWeight.bold,
                 ),
@@ -123,120 +122,118 @@ class CategoryExpensesListPage extends ConsumerWidget {
               label: Text(
                 'Wallet'.tr,
                 style: TextStyle(
-                  fontSize: scaleConfig.scaleText(10),
+                  fontSize: responsive.setSp(11),
                   color: AppColors.textColorDarkTheme,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
-          rows:
-              expenses.map((expense) {
-                final wallet = wallets.firstWhere(
-                  (wallet) => wallet.id == expense.walletType.id,
-                  orElse: () {
-                    debugPrint(
-                      'No wallet found for ID: ${expense.walletType.id}, using default',
-                    );
-                    return Wallet(
-                      id: 'default',
-                      name: 'Default',
-                      type: WalletType.cash,
-                    );
-                  },
+          rows: expenses.map((expense) {
+            final wallet = wallets.firstWhere(
+              (wallet) => wallet.id == expense.walletType.id,
+              orElse: () {
+                debugPrint(
+                  'No wallet found for ID: ${expense.walletType.id}, using default',
                 );
+                return Wallet(
+                  id: 'default',
+                  name: 'Unknown Wallet',
+                  type: WalletType.cash,
+                  currencyCode: '???', // Add code for model consistency
+                  currencySymbol: '?', // Add symbol for model consistency
+                  isDefault: false,
+                  isEnabled: false,
+                  allowedTransactionType: WalletFunctionality.both,
+                  value: 0.0,
+                );
+              },
+            );
 
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      GestureDetector(
-                        onTapDown:
-                            (details) => _showPopupMenu(
-                              context,
-                              expense,
-                              details.globalPosition,
-                            ),
-                        child: Row(
-                          children: [
-                            // Icon(
-                            //   iconCategory,
-                            //   size: scaleConfig.scale(18),
-                            //   color: iconColor,
-                            // ),
-                            // SizedBox(width: scaleConfig.scale(0)),
-                            Text(
-                              expense.title,
-                              style: TextStyle(
-                                fontSize: scaleConfig.scaleText(9),
-                                color: AppColors.textColorDarkTheme,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
+            return DataRow(
+              cells: [
+                DataCell(
+                  GestureDetector(
+                    onTapDown: (details) => _showPopupMenu(
+                      context,
+                      expense,
+                      details.globalPosition,
                     ),
-                    DataCell(
-                      GestureDetector(
-                        onTapDown:
-                            (details) => _showPopupMenu(
-                              context,
-                              expense,
-                              details.globalPosition,
-                            ),
-                        child: Text(
-                          getFormattedAmount(expense.amount, ref),
+                    child: Row(
+                      children: [
+                        Text(
+                          expense.title,
                           style: TextStyle(
-                            fontSize: scaleConfig.scaleText(9),
+                            fontSize: responsive.setSp(10),
                             color: AppColors.textColorDarkTheme,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                DataCell(
+                  GestureDetector(
+                    onTapDown: (details) => _showPopupMenu(
+                      context,
+                      expense,
+                      details.globalPosition,
+                    ),
+                    // --- THE FIX: Prepend the expense's own currency symbol ---
+                    child: Text(
+                      '${expense.currencySymbol} ${getFormattedAmount(expense.amount, ref)}',
+                      style: TextStyle(
+                        fontSize: responsive.setSp(10),
+                        color: expense.isIncome
+                            ? AppColors.accentColor
+                            : AppColors.accentColor2,
                       ),
                     ),
-                    DataCell(
-                      GestureDetector(
-                        onTapDown:
-                            (details) => _showPopupMenu(
-                              context,
-                              expense,
-                              details.globalPosition,
-                            ),
-                        child: Text(
-                          DateFormat('yyyy-MM-dd').format(expense.date),
-                          style: TextStyle(
-                            fontSize: scaleConfig.scaleText(9),
-                            color: AppColors.textColorDarkTheme,
-                          ),
-                        ),
+                  ),
+                ),
+                DataCell(
+                  GestureDetector(
+                    onTapDown: (details) => _showPopupMenu(
+                      context,
+                      expense,
+                      details.globalPosition,
+                    ),
+                    child: Text(
+                      DateFormat('yyyy-MM-dd').format(expense.date),
+                      style: TextStyle(
+                        fontSize: responsive.setSp(10),
+                        color: AppColors.textColorDarkTheme,
                       ),
                     ),
-                    DataCell(
-                      GestureDetector(
-                        onTapDown:
-                            (details) => _showPopupMenu(
-                              context,
-                              expense,
-                              details.globalPosition,
-                            ),
-                        child: Text(
-                          wallet.name,
-                          style: TextStyle(
-                            fontSize: scaleConfig.scaleText(9),
-                            color: AppColors.textColorDarkTheme,
-                          ),
-                        ),
+                  ),
+                ),
+                DataCell(
+                  GestureDetector(
+                    onTapDown: (details) => _showPopupMenu(
+                      context,
+                      expense,
+                      details.globalPosition,
+                    ),
+                    child: Text(
+                      wallet.name,
+                      style: TextStyle(
+                        fontSize: responsive.setSp(10),
+                        color: AppColors.textColorDarkTheme,
                       ),
                     ),
-                  ],
-                );
-              }).toList(),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
     );
   }
 
   void _showPopupMenu(BuildContext context, CashFlow expense, Offset position) {
-    final scaleConfig = ScaleConfig(context);
+    final responsive = context.responsive;
     Color? cardcolor = Theme.of(context).appBarTheme.backgroundColor;
 
     showMenu(
@@ -256,14 +253,14 @@ class CategoryExpensesListPage extends ConsumerWidget {
               Icon(
                 Icons.edit,
                 color: AppColors.accentColor,
-                size: scaleConfig.scale(16),
+                size: responsive.setWidth(16),
               ),
-              SizedBox(width: scaleConfig.scale(6)),
+              SizedBox(width: responsive.setWidth(6)),
               Text(
                 'Update'.tr,
                 style: TextStyle(
                   color: AppColors.textColorDarkTheme,
-                  fontSize: scaleConfig.scaleText(12),
+                  fontSize: responsive.setSp(12),
                 ),
               ),
             ],
@@ -276,14 +273,14 @@ class CategoryExpensesListPage extends ConsumerWidget {
               Icon(
                 Icons.delete,
                 color: Colors.red,
-                size: scaleConfig.scale(16),
+                size: responsive.setWidth(16),
               ),
-              SizedBox(width: scaleConfig.scale(6)),
+              SizedBox(width: responsive.setWidth(6)),
               Text(
                 'Delete'.tr,
                 style: TextStyle(
                   color: Colors.red,
-                  fontSize: scaleConfig.scaleText(12),
+                  fontSize: responsive.setSp(12),
                 ),
               ),
             ],
@@ -299,5 +296,4 @@ class CategoryExpensesListPage extends ConsumerWidget {
       }
     });
   }
-
 }

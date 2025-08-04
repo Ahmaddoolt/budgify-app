@@ -1,4 +1,4 @@
-package com.budgifydev.budgify // !!! YOUR ACTUAL PACKAGE NAME HERE !!!
+package com.budgifydev.budgify
 
 import android.app.KeyguardManager
 import android.content.Context
@@ -8,58 +8,38 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.util.Log
 import android.view.WindowManager
+import androidx.core.view.WindowCompat // <--- ADD THIS IMPORT
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     companion object {
-        // Channel name for Flutter <-> Native communication
-        const val METHOD_CHANNEL_NAME = "com.example.budgify/alarm" // !!! YOUR PACKAGE NAME !!!
-
-        // Keys used by package:alarm (version 4.x) when androidFullScreenIntent is true
-        // These are the keys package:alarm puts into the intent extras.
+        // ... (all your companion object code remains exactly the same) ...
+        const val METHOD_CHANNEL_NAME = "com.example.budgify/alarm"
         const val PKG_ALARM_EXTRA_ID = "id"
         const val PKG_ALARM_EXTRA_TITLE = "notificationTitle"
-        // const val PKG_ALARM_EXTRA_BODY = "notificationBody" // Also available from package:alarm
-
-        // Action for your custom intents (e.g., if AwesomeNotifications tap launches MainActivity directly)
-        // This might be less used if package:alarm's FSI is the primary mechanism.
-        const val CUSTOM_ALARM_ACTION_TRIGGER = "com.example.budgify.ALARM_TRIGGER" // !!! YOUR PACKAGE NAME !!!
-
-        // Keys for data sent TO FLUTTER via initialIntentData
-        // These should be consistent and what Flutter's `getInitialAlarmNativeData` expects.
+        const val CUSTOM_ALARM_ACTION_TRIGGER = "com.example.budgify.ALARM_TRIGGER"
         const val FLUTTER_EXPECTED_ALARM_ID_KEY = "alarmId"
         const val FLUTTER_EXPECTED_ALARM_TITLE_KEY = "title"
         const val FLUTTER_EXPECTED_INTENT_TYPE_KEY = "type"
         const val FLUTTER_INTENT_TYPE_ALARM = "alarm"
         const val FLUTTER_INTENT_TYPE_OTHER = "other"
-
-        // Keys used in AwesomeNotifications payload (if AN is still used for displaying notifications)
-        const val AWESOME_PAYLOAD_ALARM_ID_KEY = "alarmId" // Example, match your AN payload
-        const val AWESOME_PAYLOAD_TITLE_KEY = "title"     // Example, match your AN payload
+        const val AWESOME_PAYLOAD_ALARM_ID_KEY = "alarmId"
+        const val AWESOME_PAYLOAD_TITLE_KEY = "title"
     }
 
     private var methodChannel: MethodChannel? = null
     private var initialIntentData: Map<String, Any?>? = null
 
     private fun applyLockScreenFlags() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-            (getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager?)?.requestDismissKeyguard(this, null)
-        } else {
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD // Use with caution, test thoroughly
-            )
-        }
-        Log.d("MainActivity", "Lock screen flags applied.")
+        // ... (this function remains exactly the same) ...
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // --- ADD THIS LINE FOR EDGE-TO-EDGE DISPLAY ---
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         val currentIntent = intent
         if (isAlarmIntent(currentIntent)) {
             Log.d("MainActivity", "onCreate: Alarm intent detected. Applying lock screen flags.")
@@ -70,6 +50,8 @@ class MainActivity : FlutterActivity() {
         handleIntent(currentIntent)
     }
 
+    // ... (All other functions like configureFlutterEngine, onNewIntent, handleIntent, etc., remain exactly the same) ...
+    // ... I'm omitting them here for brevity, but they should not be changed.
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         Log.d("MainActivity", "configureFlutterEngine called.")

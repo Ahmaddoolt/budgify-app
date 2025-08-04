@@ -1,429 +1,353 @@
-import 'package:budgify/core/utils/date_picker_widget.dart';
-import 'package:budgify/core/utils/scale_config.dart';
-import 'package:budgify/core/utils/snackbar_helper.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:get/get.dart';
-import '../../../../core/themes/app_colors.dart';
-import '../../../../domain/models/wallet.dart';
-import '../../../../data/repo/expenses_repository.dart';
+// import 'package:budgify/core/utils/date_picker_widget.dart';
+// import 'package:budgify/core/utils/scale_config.dart';
+// import 'package:budgify/core/utils/snackbar_helper.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'package:get/get.dart';
+// import '../../../../core/themes/app_colors.dart';
+// import '../../../../domain/models/wallet.dart';
+// import '../../../../data/repo/expenses_repository.dart';
+// import '../../../../viewmodels/providers/wallet_provider.dart';
 
-// Providers
-final expensesRepositoryProvider = Provider<ExpensesRepository>((ref) {
-  return ExpensesRepository();
-});
+// final expensesRepositoryProvider = Provider<ExpensesRepository>(
+//   (ref) => ExpensesRepository(),
+// );
 
-void showTransferDialog(
-  BuildContext context,
-  WidgetRef ref,
-  List<Wallet> wallets,
-) {
-  final repository = ref.read(expensesRepositoryProvider);
-  final amountController = TextEditingController();
-  final scaleConfig = context.scaleConfig; // Access ScaleConfig
-  Color cardColor = Theme.of(context).appBarTheme.backgroundColor!;
+// void showTransferDialog(
+//   BuildContext context,
+//   WidgetRef ref,
+//   List<Wallet> wallets,
+// ) {
+//   final repository = ref.read(expensesRepositoryProvider);
+//   final amountController = TextEditingController();
+//   final exchangeRateController = TextEditingController(text: '1.0');
+//   final responsive = context.responsive;
+//   Color cardColor = Theme.of(context).appBarTheme.backgroundColor!;
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      Wallet? fromWallet;
-      Wallet? toWallet;
-      DateTime selectedDate = DateTime.now();
-      bool isSelectedDate = false;
-      bool isCheckingBalance = false;
+//   final transferWallets =
+//       wallets.where((w) => w.isEnabled && w.isTransferEnabled).toList();
 
-      Future<double> getWalletBalance(Wallet wallet) async {
-        try {
-          final expenses = await repository.getExpensesStream().first;
-          final walletExpenses = expenses.where(
-            (e) => e.walletType.id == wallet.id,
-          );
+//   showDialog(
+//     context: context,
+//     // Store the dialog's context to use it for closing.
+//     builder: (dialogContext) {
+//       Wallet? fromWallet;
+//       Wallet? toWallet;
+//       DateTime selectedDate = DateTime.now();
+//       bool isSelectedDate = false;
+//       bool isProcessing = false;
+//       final formKey = GlobalKey<FormState>();
 
-          final income = walletExpenses
-              .where((e) => e.isIncome)
-              .fold<double>(0, (sum, e) => sum + e.amount);
-          final expense = walletExpenses
-              .where((e) => !e.isIncome)
-              .fold<double>(0, (sum, e) => sum + e.amount);
-          return income - expense;
-        } catch (e) {
-          return 0.0;
-        }
-      }
+//       String? _errorMessage;
 
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            backgroundColor: cardColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(scaleConfig.tabletScale(16)),
-            ),
-            title: Text(
-              "Transfer Amount".tr,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: scaleConfig.tabletScaleText(12),
-              ),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // From Wallet dropdown
-                  DropdownButtonFormField<Wallet>(
-                    dropdownColor: cardColor,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: scaleConfig.tabletScaleText(14),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "From Wallet".tr,
-                      labelStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: scaleConfig.tabletScaleText(14),
-                      ),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white54,
-                          width: scaleConfig.tabletScale(1),
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.accentColor,
-                          width: scaleConfig.tabletScale(2),
-                        ),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.account_balance_wallet,
-                        color: Colors.white,
-                        size: scaleConfig.tabletScale(18),
-                      ),
-                    ),
-                    items:
-                        wallets.map((wallet) {
-                          return DropdownMenuItem(
-                            value: wallet,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.account_balance_wallet,
-                                  color: Colors.white,
-                                  size: scaleConfig.tabletScale(18),
-                                ),
-                                SizedBox(width: scaleConfig.tabletScale(8)),
-                                Text(
-                                  wallet.name,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: scaleConfig.tabletScaleText(12),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                    onChanged: (value) => setState(() => fromWallet = value),
-                    validator:
-                        (value) =>
-                            value == null ? 'Please select a wallet'.tr : null,
-                  ),
-                  SizedBox(height: scaleConfig.tabletScale(12)),
+//       Widget _buildErrorMessage() {
+//         return AnimatedSize(
+//           duration: const Duration(milliseconds: 300),
+//           child:
+//               _errorMessage == null
+//                   ? const SizedBox.shrink()
+//                   : Container(
+//                     padding: const EdgeInsets.symmetric(vertical: 8.0),
+//                     child: Row(
+//                       mainAxisAlignment: MainAxisAlignment.center,
+//                       children: [
+//                         Icon(
+//                           Icons.error_outline,
+//                           color: Colors.redAccent[100],
+//                           size: 16,
+//                         ),
+//                         const SizedBox(width: 8),
+//                         Expanded(
+//                           child: Text(
+//                             _errorMessage!,
+//                             style: TextStyle(
+//                               color: Colors.redAccent[100],
+//                               fontSize: 13,
+//                             ),
+//                             textAlign: TextAlign.center,
+//                             maxLines: 2,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//         );
+//       }
 
-                  // To Wallet dropdown
-                  DropdownButtonFormField<Wallet>(
-                    dropdownColor: cardColor,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: scaleConfig.tabletScaleText(12),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "To Wallet".tr,
-                      labelStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: scaleConfig.tabletScaleText(12),
-                      ),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white54,
-                          width: scaleConfig.tabletScale(1),
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.accentColor,
-                          width: scaleConfig.tabletScale(2),
-                        ),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.account_balance_wallet,
-                        color: Colors.white,
-                        size: scaleConfig.tabletScale(18),
-                      ),
-                    ),
-                    items:
-                        wallets.map((wallet) {
-                          return DropdownMenuItem(
-                            value: wallet,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.account_balance_wallet,
-                                  color: Colors.white,
-                                  size: scaleConfig.tabletScale(18),
-                                ),
-                                SizedBox(width: scaleConfig.tabletScale(8)),
-                                Text(
-                                  wallet.name,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: scaleConfig.tabletScaleText(14),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                    onChanged: (value) => setState(() => toWallet = value),
-                    validator:
-                        (value) =>
-                            value == null ? 'Please select a wallet'.tr : null,
-                  ),
-                  SizedBox(height: scaleConfig.tabletScale(12)),
+//       return StatefulBuilder(
+//         builder: (context, setState) {
+//           void clearError() {
+//             if (_errorMessage != null) {
+//               setState(() => _errorMessage = null);
+//             }
+//           }
 
-                  // Amount field
-                  TextFormField(
-                    controller: amountController,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: scaleConfig.tabletScaleText(14),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "Amount".tr,
-                      labelStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: scaleConfig.tabletScaleText(13),
-                      ),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white54,
-                          width: scaleConfig.tabletScale(1),
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.accentColor,
-                          width: scaleConfig.tabletScale(2),
-                        ),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.money,
-                        color: Colors.white,
-                        size: scaleConfig.tabletScale(18),
-                      ),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter an amount'.tr;
-                      }
-                      if (double.tryParse(value) == null) {
-                        return 'Please enter a valid number'.tr;
-                      }
-                      if (double.parse(value) <= 0) {
-                        return 'Amount must be greater than zero'.tr;
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: scaleConfig.tabletScale(12)),
+//           bool showExchangeRate =
+//               fromWallet != null &&
+//               toWallet != null &&
+//               fromWallet?.currencySymbol != toWallet?.currencySymbol;
 
-                  // Date Picker Widget
-                  DatePickerWidget(
-                    initialDate: selectedDate,
-                    onDateSelected: (picked) {
-                      setState(() {
-                        selectedDate = picked;
-                        isSelectedDate = true;
-                      });
-                    },
-                    isSelected: isSelectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2101),
-                    labelText: 'Date'.tr,
-                    borderRadius: scaleConfig.tabletScale(12),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  "Cancel".tr,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: scaleConfig.tabletScaleText(12),
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      8,
-                    ), // 👈 Set your desired radius here
-                  ),
-                  backgroundColor: AppColors.accentColor,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: scaleConfig.tabletScale(16),
-                    vertical: scaleConfig.tabletScale(8),
-                  ),
-                ),
-                onPressed: () async {
-                  // Basic validation
-                  if (fromWallet == null ||
-                      toWallet == null ||
-                      amountController.text.isEmpty) {
-                    showFeedbackSnackbar(context, 'Please fill all fields'.tr);
-                    return;
-                  }
+//           return AlertDialog(
+//             backgroundColor: cardColor,
+//             shape: RoundedRectangleBorder(
+//               borderRadius: BorderRadius.circular(responsive.setWidth(16)),
+//             ),
+//             title: Text(
+//               "Transfer Amount".tr,
+//               style: TextStyle(
+//                 color: Colors.white,
+//                 fontSize: responsive.setSp(12),
+//               ),
+//             ),
+//             content: Form(
+//               key: formKey,
+//               child: SingleChildScrollView(
+//                 child: Column(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     DropdownButtonFormField<Wallet>(
+//                       dropdownColor: cardColor,
+//                       style: TextStyle(color: Colors.white),
+//                       decoration: InputDecoration(
+//                         labelText: "From Wallet".tr,
+//                         labelStyle: TextStyle(color: Colors.white70),
+//                       ),
+//                       items:
+//                           transferWallets
+//                               .map(
+//                                 (w) => DropdownMenuItem(
+//                                   value: w,
+//                                   child: Text(
+//                                     '${w.name} (${w.currencySymbol})',
+//                                   ),
+//                                 ),
+//                               )
+//                               .toList(),
+//                       onChanged:
+//                           (v) => setState(() {
+//                             fromWallet = v;
+//                             clearError();
+//                           }),
+//                       validator:
+//                           (v) => v == null ? 'Please select a wallet'.tr : null,
+//                     ),
+//                     SizedBox(height: responsive.setHeight(12)),
+//                     DropdownButtonFormField<Wallet>(
+//                       dropdownColor: cardColor,
+//                       style: TextStyle(color: Colors.white),
+//                       decoration: InputDecoration(
+//                         labelText: "To Wallet".tr,
+//                         labelStyle: TextStyle(color: Colors.white70),
+//                       ),
+//                       items:
+//                           transferWallets
+//                               .map(
+//                                 (w) => DropdownMenuItem(
+//                                   value: w,
+//                                   child: Text(
+//                                     '${w.name} (${w.currencySymbol})',
+//                                   ),
+//                                 ),
+//                               )
+//                               .toList(),
+//                       onChanged:
+//                           (v) => setState(() {
+//                             toWallet = v;
+//                             clearError();
+//                           }),
+//                       validator:
+//                           (v) => v == null ? 'Please select a wallet'.tr : null,
+//                     ),
+//                     SizedBox(height: responsive.setHeight(12)),
+//                     TextFormField(
+//                       controller: amountController,
+//                       style: TextStyle(color: Colors.white),
+//                       decoration: InputDecoration(
+//                         labelText: "Amount to Transfer".tr,
+//                         labelStyle: TextStyle(color: Colors.white70),
+//                       ),
+//                       keyboardType: TextInputType.number,
+//                       onChanged: (_) => clearError(),
+//                       validator:
+//                           (v) =>
+//                               (v == null ||
+//                                       v.isEmpty ||
+//                                       double.tryParse(v) == null)
+//                                   ? 'Enter a valid amount'.tr
+//                                   : null,
+//                     ),
+//                     if (showExchangeRate)
+//                       Padding(
+//                         padding: EdgeInsets.only(top: responsive.setHeight(12)),
+//                         child: TextFormField(
+//                           controller: exchangeRateController,
+//                           style: TextStyle(color: Colors.white),
+//                           decoration: InputDecoration(
+//                             labelText:
+//                                 '1 ${fromWallet?.currencySymbol} = ? ${toWallet?.currencySymbol}'
+//                                     .tr,
+//                             labelStyle: TextStyle(color: Colors.white70),
+//                           ),
+//                           keyboardType: TextInputType.number,
+//                           onChanged: (_) => clearError(),
+//                           validator:
+//                               (v) =>
+//                                   (v == null ||
+//                                           double.tryParse(v) == null ||
+//                                           double.parse(v) <= 0)
+//                                       ? 'Enter a valid rate'.tr
+//                                       : null,
+//                         ),
+//                       ),
+//                     SizedBox(height: responsive.setHeight(12)),
+//                     DatePickerWidget(
+//                       initialDate: selectedDate,
+//                       onDateSelected:
+//                           (d) => setState(() {
+//                             selectedDate = d;
+//                             isSelectedDate = true;
+//                             clearError();
+//                           }),
+//                       isSelected: isSelectedDate,
+//                       firstDate: DateTime(2000),
+//                       lastDate: DateTime(2101),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//             actions: [
+//               Column(
+//                 children: [
+//                   _buildErrorMessage(),
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.end,
+//                     children: [
+//                       TextButton(
+//                         onPressed: () => Navigator.of(dialogContext).pop(),
+//                         child: Text(
+//                           "Cancel".tr,
+//                           style: TextStyle(color: AppColors.accentColor2),
+//                         ),
+//                       ),
+//                       ElevatedButton(
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: AppColors.accentColor,
+//                           shape: RoundedRectangleBorder(
+//                             borderRadius: BorderRadius.circular(8),
+//                           ),
+//                         ),
+//                         onPressed: () async {
+//                           if (!formKey.currentState!.validate()) {
+//                             return;
+//                           }
 
-                  // Check same wallet
-                  if (fromWallet!.id == toWallet!.id) {
-                    showFeedbackSnackbar(
-                      context,
-                      'Cannot transfer to the same wallet'.tr,
-                    );
-                    return;
-                  }
+//                           final amountToDebit =
+//                               double.tryParse(amountController.text) ?? 0;
+//                           final exchangeRate =
+//                               double.tryParse(exchangeRateController.text) ??
+//                               1.0;
+//                           final amountToCredit = amountToDebit * exchangeRate;
 
-                  final amount = double.tryParse(amountController.text) ?? 0;
-                  if (amount <= 0) {
-                    showFeedbackSnackbar(
-                      context,
-                      'Amount must be greater than zero'.tr,
-                    );
-                    return;
-                  }
+//                           if (fromWallet!.id == toWallet!.id) {
+//                             setState(
+//                               () =>
+//                                   _errorMessage =
+//                                       'Cannot transfer to the same wallet'.tr,
+//                             );
+//                             return;
+//                           }
+//                           if (fromWallet!.value < amountToDebit) {
+//                             setState(
+//                               () => _errorMessage = 'Insufficient funds'.tr,
+//                             );
+//                             return;
+//                           }
+//                           if (fromWallet!.minValue != null &&
+//                               fromWallet!.value >= fromWallet!.minValue! &&
+//                               (fromWallet!.value - amountToDebit) <
+//                                   fromWallet!.minValue!) {
+//                             setState(
+//                               () =>
+//                                   _errorMessage =
+//                                       'This transfer would bring ${fromWallet!.name} below its minimum value'
+//                                           .tr,
+//                             );
+//                             return;
+//                           }
+//                           if (toWallet!.maxValue != null &&
+//                               (toWallet!.value + amountToCredit) >
+//                                   toWallet!.maxValue!) {
+//                             setState(
+//                               () =>
+//                                   _errorMessage =
+//                                       'This transfer would push ${toWallet!.name} above its maximum value'
+//                                           .tr,
+//                             );
+//                             return;
+//                           }
 
-                  setState(() => isCheckingBalance = true);
-                  final balance = await getWalletBalance(fromWallet!);
-                  setState(() => isCheckingBalance = false);
-
-                  // ignore: use_build_context_synchronously
-                  if (!context.mounted) return;
-
-                  if (balance <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Text(
-                              'Source wallet has no available funds (Balance: '
-                                  .tr,
-                              style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(12),
-                              ),
-                            ),
-                            SizedBox(width: scaleConfig.tabletScale(8)),
-                            Text(
-                              '${balance.toStringAsFixed(1)})',
-                              style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(12),
-                              ),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (balance < amount) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Text(
-                              'Insufficient funds. Available: '.tr,
-                              style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(12),
-                              ),
-                            ),
-                            SizedBox(width: scaleConfig.tabletScale(8)),
-                            Text(
-                              balance.toStringAsFixed(1),
-                              style: TextStyle(
-                                fontSize: scaleConfig.tabletScaleText(12),
-                              ),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  try {
-                    await repository.transferAmount(
-                      fromWallet: fromWallet!,
-                      toWallet: toWallet!,
-                      amount: amount,
-                      date: selectedDate,
-                    );
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
-                      showFeedbackSnackbar(
-                        context,
-                        'Transfer completed successfully'.tr,
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Transfer failed: ${e.toString()}',
-                            style: TextStyle(
-                              fontSize: scaleConfig.tabletScaleText(12),
-                            ),
-                          ),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child:
-                    isCheckingBalance
-                        ? SizedBox(
-                          width: scaleConfig.tabletScale(20),
-                          height: scaleConfig.tabletScale(20),
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: scaleConfig.tabletScale(2),
-                          ),
-                        )
-                        : Text(
-                          "Transfer".tr,
-                          style: TextStyle(
-                            fontSize: scaleConfig.tabletScaleText(12),
-                            color:
-                                Theme.of(context).appBarTheme.backgroundColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+//                           setState(() => isProcessing = true);
+//                           try {
+//                             await repository.transferAmount(
+//                               fromWallet: fromWallet!,
+//                               toWallet: toWallet!,
+//                               amount: amountToDebit,
+//                               date: selectedDate,
+//                             );
+//                             ref
+//                                 .read(walletProvider.notifier)
+//                                 .handleTransfer(
+//                                   fromWallet!,
+//                                   toWallet!,
+//                                   amountToDebit,
+//                                   amountToCredit,
+//                                 );
+//                             if (dialogContext.mounted) {
+//                               // --- UPDATED LOGIC ---
+//                               // 1. Close the dialog
+//                               Navigator.of(dialogContext).pop();
+//                               // 2. Show the snackbar on the main screen's context
+//                               showFeedbackSnackbar(
+//                                 context,
+//                                 'Transfer successful'.tr,
+//                               );
+//                             }
+//                           } catch (e) {
+//                             setState(
+//                               () => _errorMessage = 'Transfer failed: $e'.tr,
+//                             );
+//                           } finally {
+//                             if (dialogContext.mounted)
+//                               setState(() => isProcessing = false);
+//                           }
+//                         },
+//                         child:
+//                             isProcessing
+//                                 ? SizedBox(
+//                                   width: 20,
+//                                   height: 20,
+//                                   child: CircularProgressIndicator(
+//                                     color: Colors.black,
+//                                     strokeWidth: 2,
+//                                   ),
+//                                 )
+//                                 : Text(
+//                                   "Transfer".tr,
+//                                   style: TextStyle(
+//                                     color: Colors.black,
+//                                     fontWeight: FontWeight.bold,
+//                                   ),
+//                                 ),
+//                       ),
+//                     ],
+//                   ),
+//                 ],
+//               ),
+//             ],
+//           );
+//         },
+//       );
+//     },
+//   );
+// }

@@ -1,15 +1,21 @@
+// lib/views/pages/graphscreen/charts/bar_chart.dart
+
 import 'package:budgify/core/utils/no_data_widget.dart';
 import 'package:budgify/core/utils/parrot_animation_waiting.dart';
 import 'package:budgify/core/utils/format_amount.dart';
+import 'package:budgify/core/utils/scale_config.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import '../../../../domain/models/expense.dart';
 import '../../../../data/repo/expenses_repository.dart';
-import 'package:budgify/core/utils/scale_config.dart'; // Import the ScaleConfig
+import 'package:budgify/core/themes/app_colors.dart';
 
 class SimpleBarChart extends ConsumerWidget {
+  // --- THE FIX: Receive both code and symbol ---
+  final String currencyCode;
+  final String currencySymbol;
   final int day;
   final int month;
   final int year;
@@ -20,6 +26,8 @@ class SimpleBarChart extends ConsumerWidget {
 
   const SimpleBarChart({
     super.key,
+    required this.currencyCode,
+    required this.currencySymbol,
     required this.day,
     required this.month,
     required this.year,
@@ -31,37 +39,40 @@ class SimpleBarChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scaleConfig = ScaleConfig(context); // Initialize ScaleConfig
+    final responsive = context.responsive;
     final repository = ExpensesRepository();
 
     return StreamBuilder<List<CashFlow>>(
       stream: repository.getExpensesStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return ParrotAnimation();
+          return const ParrotAnimation();
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return NoDataWidget();
+          return const NoDataWidget();
         }
 
         final now = DateTime.now();
-        final filteredExpenses =
-            snapshot.data!.where((expense) {
-              final expenseDate = expense.date;
-              bool yearMatches = isYear ? expenseDate.year == year : true;
-              if (!isYear && (isMonth || isDay)) {
-                yearMatches = expenseDate.year == now.year;
-              }
-              bool monthMatches = isMonth ? expenseDate.month == month : true;
-              bool dayMatches = isDay ? expenseDate.day == day : true;
 
-              return yearMatches &&
-                  monthMatches &&
-                  dayMatches &&
-                  expense.isIncome == isIncome;
-            }).toList();
+        // --- THE FIX: Filter by currencyCode ---
+        final filteredExpenses = snapshot.data!.where((expense) {
+          if (expense.currencyCode != currencyCode) return false;
+
+          final expenseDate = expense.date;
+          bool yearMatches = isYear ? expenseDate.year == year : true;
+          if (!isYear && (isMonth || isDay)) {
+            yearMatches = expenseDate.year == now.year;
+          }
+          bool monthMatches = isMonth ? expenseDate.month == month : true;
+          bool dayMatches = isDay ? expenseDate.day == day : true;
+
+          return yearMatches &&
+              monthMatches &&
+              dayMatches &&
+              expense.isIncome == isIncome;
+        }).toList();
 
         if (filteredExpenses.isEmpty) {
-          return NoDataWidget();
+          return const NoDataWidget();
         }
 
         final Map<String, double> categoryTotals = {};
@@ -74,59 +85,54 @@ class SimpleBarChart extends ConsumerWidget {
           categoryDetails[categoryName] = expense;
         }
 
-        final double maxAmount =
-            categoryTotals.values.isNotEmpty
-                ? categoryTotals.values.reduce((a, b) => a > b ? a : b)
-                : 0;
+        final double maxAmount = categoryTotals.values.isNotEmpty
+            ? categoryTotals.values.reduce((a, b) => a > b ? a : b)
+            : 0;
 
-        List<BarChartGroupData> barGroups =
-            categoryTotals.entries.map((entry) {
-              final categoryExpense = categoryDetails[entry.key]!;
-              return BarChartGroupData(
-                x: categoryTotals.keys.toList().indexOf(entry.key),
-                barRods: [
-                  BarChartRodData(
-                    toY: entry.value,
-                    color: categoryExpense.category.color,
-                    width: scaleConfig.scale(8), // Scaled bar width
-                  ),
-                ],
-                showingTooltipIndicators: [],
-              );
-            }).toList();
+        List<BarChartGroupData> barGroups = categoryTotals.entries.map((entry) {
+          final categoryExpense = categoryDetails[entry.key]!;
+          return BarChartGroupData(
+            x: categoryTotals.keys.toList().indexOf(entry.key),
+            barRods: [
+              BarChartRodData(
+                toY: entry.value,
+                color: categoryExpense.category.color,
+                width: responsive.setWidth(8),
+              ),
+            ],
+            showingTooltipIndicators: [],
+          );
+        }).toList();
 
         return Padding(
-          padding: EdgeInsets.only(
-            right: scaleConfig.scale(5),
-          ), // Scaled padding
+          padding: EdgeInsets.only(right: responsive.setWidth(5)),
           child: BarChart(
             BarChartData(
               alignment: BarChartAlignment.spaceAround,
-              maxY: maxAmount,
+              maxY: maxAmount > 0 ? maxAmount * 1.1 : 10,
               barGroups: barGroups,
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    interval: maxAmount / 5,
+                    interval: (maxAmount > 0 ? maxAmount * 1.1 : 10) / 5,
                     getTitlesWidget: (value, meta) {
                       return Text(
-                        getFormattedAmount(value, ref),
+                        // The currencySymbol is used here for display
+                        '$currencySymbol ${getFormattedAmount(value, ref)}',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: scaleConfig.scaleText(8), // Scaled text
+                          fontSize: responsive.setSp(8),
                         ),
                       );
                     },
-                    reservedSize: scaleConfig.scale(
-                      40,
-                    ), // Scaled reserved space
+                    reservedSize: responsive.setWidth(50),
                   ),
                 ),
-                rightTitles: AxisTitles(
+                rightTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
                 ),
-                topTitles: AxisTitles(
+                topTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false),
                 ),
                 bottomTitles: AxisTitles(
@@ -137,12 +143,14 @@ class SimpleBarChart extends ConsumerWidget {
                       if (index >= 0 && index < categoryTotals.keys.length) {
                         final category = categoryTotals.keys.elementAt(index);
                         return Padding(
-                          padding: EdgeInsets.only(top: scaleConfig.scale(4)),
+                          padding: EdgeInsets.only(
+                            top: responsive.setHeight(4),
+                          ),
                           child: Text(
                             category.tr,
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: scaleConfig.scaleText(8), // Scaled text
+                              fontSize: responsive.setSp(8),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -151,39 +159,19 @@ class SimpleBarChart extends ConsumerWidget {
                       }
                       return const Text('');
                     },
-                    reservedSize: scaleConfig.scale(30), // Space for labels
+                    reservedSize: responsive.setHeight(30),
                   ),
                 ),
               ),
-
               gridData: FlGridData(
                 show: true,
-                getDrawingHorizontalLine:
-                    (value) => FlLine(
-                      color: Colors.grey.withOpacity(0.3),
-                      strokeWidth: scaleConfig.scale(0.5), // Scaled line width
-                    ),
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: Colors.grey.withOpacity(0.3),
+                  strokeWidth: responsive.setWidth(0.5),
+                ),
                 verticalInterval: 1,
               ),
               borderData: FlBorderData(show: false),
-
-              // barTouchData: BarTouchData(
-              //   enabled: false,
-              //   touchTooltipData: BarTouchTooltipData(
-              //     // ignore: deprecated_member_use
-              //     // getTooltipColor: Colors.black.withOpacity(0.8),
-              //     getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              //       final category = categoryTotals.keys.elementAt(group.x);
-              //       return BarTooltipItem(
-              //         '$category\n${rod.toY.toStringAsFixed(2)}',
-              //         TextStyle(
-              //           color: Colors.white,
-              //           fontSize: scaleConfig.scaleText(12), // Scaled tooltip
-              //         ),
-              //       );
-              //     },
-              //   ),
-              // ),
             ),
           ),
         );

@@ -14,7 +14,7 @@ class IncomeSwitch extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Income Tracking:'.tr),
+        Text('Income Tracking'.tr),
         Switch(
           activeColor: AppColors.accentColor,
           activeTrackColor: AppColors.accentColor.withOpacity(0.5),
